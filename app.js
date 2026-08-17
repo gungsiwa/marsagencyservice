@@ -1,0 +1,592 @@
+const SUPABASE_URL = 'https://lxnlhqzypezvelmspevv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_fhisWr9_VvHAwb2INiMCQQ_ya5nXH9q';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const AUTH_CONFIG = { username: 'admin', password: 'marscloud2026' };
+
+let appData = {
+    currentFolderId: 'root',
+    items: [],
+    activeEditingId: null,
+    stagedMediaFiles: []
+};
+
+function refreshIcons() {
+    setTimeout(() => {
+        if (window.lucide) lucide.createIcons();
+    }, 50);
+}
+
+// ==========================================
+// Toast Notification UI Component
+// ==========================================
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const iconName = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info';
+    
+    toast.innerHTML = `<i data-lucide="${iconName}"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    
+    refreshIcons();
+    setTimeout(() => toast.remove(), 3200);
+}
+
+// ==========================================
+// 1. Authentication
+// ==========================================
+document.getElementById('login-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const u = document.getElementById('login-username').value.trim();
+    const p = document.getElementById('login-password').value.trim();
+    if (u === AUTH_CONFIG.username && p === AUTH_CONFIG.password) {
+        sessionStorage.setItem('mars_auth', 'true');
+        showApp();
+        showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ!', 'success');
+    } else {
+        document.getElementById('login-error').classList.remove('hidden');
+    }
+});
+
+document.getElementById('btn-logout')?.addEventListener('click', () => {
+    sessionStorage.removeItem('mars_auth');
+    location.reload();
+});
+
+function checkAuth() {
+    if (sessionStorage.getItem('mars_auth') === 'true') showApp();
+    else refreshIcons();
+}
+
+function showApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    loadDataFromCloud();
+    startRealtimeClockAndReminders();
+    initGlobalDragAndDrop();
+    refreshIcons();
+}
+
+// ==========================================
+// 2. Data Sync (Supabase)
+// ==========================================
+function initDefaultFolders() {
+    const defaultFolders = [
+        { id: 'folder_notes', name: '📝 โน้ตบันทึก', type: 'folder', parentId: 'root', isDefault: true },
+        { id: 'folder_media', name: '🖼️ ภาพและวิดีโอ', type: 'folder', parentId: 'root', isDefault: true },
+        { id: 'folder_links', name: '🔗 คลังลิงก์', type: 'folder', parentId: 'root', isDefault: true }
+    ];
+
+    defaultFolders.forEach(df => {
+        if (!appData.items.some(i => i.id === df.id)) appData.items.push(df);
+    });
+}
+
+async function loadDataFromCloud() {
+    try {
+        const { data } = await supabaseClient.from('mars_data').select('*').eq('key', 'mars_app_state').maybeSingle();
+        if (data && data.value) {
+            appData.items = data.value.items || [];
+        }
+        initDefaultFolders();
+        updateStatus(true);
+        renderApp();
+    } catch (err) {
+        console.error('Failed to load:', err);
+        initDefaultFolders();
+        updateStatus(false);
+        renderApp();
+    }
+}
+
+async function saveDataToCloud() {
+    try {
+        const payload = { key: 'mars_app_state', value: { items: appData.items } };
+        const { error } = await supabaseClient.from('mars_data').upsert(payload, { onConflict: 'key' });
+        
+        if (error) {
+            showToast('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, 'error');
+            updateStatus(false);
+            return false;
+        }
+        updateStatus(true);
+        return true;
+    } catch (err) {
+        updateStatus(false);
+        return false;
+    }
+}
+
+supabaseClient.channel('public:mars_data')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mars_data' }, (payload) => {
+        if (payload.new && payload.new.value && payload.new.key === 'mars_app_state') {
+            appData.items = payload.new.value.items || [];
+            initDefaultFolders();
+            renderApp();
+        }
+    }).subscribe();
+
+function isMediaItem(item) {
+    if (item.type === 'media' || item.mediaSrc) return true;
+    const content = item.content || '';
+    if (typeof content === 'string' && (content.startsWith('data:image') || content.startsWith('data:video'))) {
+        return true;
+    }
+    return false;
+}
+
+// ==========================================
+// 3. Navigation & Tab Switcher (Fixed Highlight Bug)
+// ==========================================
+function switchTab(tabName, activeNavId = null) {
+    document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(el => el.classList.remove('active'));
+
+    const targetNav = activeNavId ? document.getElementById(activeNavId) : document.getElementById(`nav-${tabName}`);
+    if (targetNav) targetNav.classList.add('active');
+
+    if (tabName === 'dashboard') {
+        document.getElementById('view-dashboard').classList.remove('hidden');
+        document.getElementById('page-title').innerText = 'ภาพรวมระบบ';
+    } else if (tabName === 'files') {
+        document.getElementById('view-files').classList.remove('hidden');
+        document.getElementById('page-title').innerText = 'จัดการเอกสารและคลังสื่อ';
+    } else if (tabName === 'trash') {
+        document.getElementById('view-trash').classList.remove('hidden');
+        document.getElementById('page-title').innerText = 'ถังขยะระบบ';
+    }
+    renderApp();
+}
+
+function navigateToFolder(folderId) {
+    appData.currentFolderId = folderId;
+    const navId = folderId === 'folder_media' ? 'nav-media' : folderId === 'root' ? 'nav-files' : 'nav-files';
+    switchTab('files', navId);
+}
+
+// ==========================================
+// 4. Modal Operations & Drag-Drop Multi Upload
+// ==========================================
+const createTypeSelect = document.getElementById('create-type');
+const dropZone = document.getElementById('drop-zone');
+const mediaFilesInput = document.getElementById('media-files-input');
+
+createTypeSelect?.addEventListener('change', (e) => {
+    const type = e.target.value;
+    const linkGroup = document.getElementById('link-input-group');
+    const mediaGroup = document.getElementById('media-upload-group');
+    const contentGroup = document.getElementById('content-input-group');
+    const contentLabel = document.getElementById('content-label');
+
+    linkGroup.classList.add('hidden');
+    mediaGroup.classList.add('hidden');
+    contentGroup.classList.remove('hidden');
+
+    if (type === 'link') {
+        linkGroup.classList.remove('hidden');
+        contentGroup.classList.add('hidden');
+    } else if (type === 'media') {
+        mediaGroup.classList.remove('hidden');
+        if (contentLabel) contentLabel.innerText = 'คำอธิบายภาพ/วิดีโอ (Caption)';
+    } else if (type === 'folder') {
+        contentGroup.classList.add('hidden');
+    } else {
+        if (contentLabel) contentLabel.innerText = 'รายละเอียด / เนื้อหาโน้ต';
+    }
+});
+
+dropZone?.addEventListener('click', () => mediaFilesInput?.click());
+
+mediaFilesInput?.addEventListener('change', (e) => {
+    handleSelectedMediaFiles(e.target.files);
+});
+
+function handleSelectedMediaFiles(files) {
+    if (!files || files.length === 0) return;
+    const previewBox = document.getElementById('media-previews-container');
+
+    Array.from(files).forEach(file => {
+        if (file.size > 15 * 1024 * 1024) {
+            showToast(`ไฟล์ ${file.name} มีขนาดใหญ่เกิน 15MB อาจส่งผลกระทบต่อความเร็ว`, 'error');
+        }
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const dataUrl = evt.target.result;
+            const isVideo = file.type.startsWith('video');
+            appData.stagedMediaFiles.push({
+                src: dataUrl,
+                mediaType: isVideo ? 'video' : 'image',
+                fileName: file.name
+            });
+
+            const thumb = document.createElement('div');
+            thumb.className = 'media-thumb-preview';
+            thumb.innerHTML = isVideo ? 
+                `<video src="${dataUrl}"></video><span class="badge-tag">VIDEO</span>` : 
+                `<img src="${dataUrl}" /><span class="badge-tag">IMG</span>`;
+            previewBox.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Global Drag & Drop Listener
+function initGlobalDragAndDrop() {
+    const workspace = document.getElementById('global-drop-zone');
+    if (!workspace) return;
+
+    workspace.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        workspace.classList.add('drag-active');
+    });
+
+    workspace.addEventListener('dragleave', () => workspace.classList.remove('drag-active'));
+    workspace.addEventListener('drop', (e) => {
+        e.preventDefault();
+        workspace.classList.remove('drag-active');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            openCreateModal();
+            document.getElementById('create-type').value = 'media';
+            document.getElementById('create-type').dispatchEvent(new Event('change'));
+            handleSelectedMediaFiles(e.dataTransfer.files);
+            showToast('เตรียมอัปโหลดไฟล์ที่ลากเข้ามาเรียบร้อย', 'info');
+        }
+    });
+}
+
+function openCreateModal() {
+    const parentSelect = document.getElementById('create-parent');
+    parentSelect.innerHTML = '<option value="root">📂 หน้าแรกสุด (Root)</option>';
+
+    const folders = appData.items.filter(i => i.type === 'folder' && !i.isDeleted);
+    folders.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.id;
+        option.innerText = `📁 ${f.name}`;
+        if (f.id === appData.currentFolderId) option.selected = true;
+        parentSelect.appendChild(option);
+    });
+
+    appData.stagedMediaFiles = [];
+    document.getElementById('media-previews-container').innerHTML = '';
+    document.getElementById('create-type').value = appData.currentFolderId === 'folder_media' ? 'media' : 'note';
+    document.getElementById('create-title').value = '';
+    document.getElementById('create-content').value = '';
+    document.getElementById('create-link-url').value = '';
+    document.getElementById('create-reminder-time').value = '';
+
+    document.getElementById('create-type').dispatchEvent(new Event('change'));
+    document.getElementById('create-modal').classList.remove('hidden');
+    refreshIcons();
+}
+
+document.getElementById('btn-submit-create')?.addEventListener('click', async () => {
+    const type = document.getElementById('create-type').value;
+    const parentId = document.getElementById('create-parent').value;
+    const name = document.getElementById('create-title').value.trim();
+    const content = document.getElementById('create-content').value;
+    const linkUrl = document.getElementById('create-link-url').value.trim();
+    const reminderTime = document.getElementById('create-reminder-time').value;
+
+    if (!name) {
+        showToast('กรุณาระบุชื่อหัวข้อ / ชื่อไฟล์', 'error');
+        return;
+    }
+
+    if (type === 'media' && appData.stagedMediaFiles.length > 0) {
+        appData.stagedMediaFiles.forEach((media, idx) => {
+            appData.items.push({
+                id: 'media_' + Date.now() + '_' + idx,
+                name: appData.stagedMediaFiles.length > 1 ? `${name} (${idx + 1})` : name,
+                type: 'media',
+                mediaType: media.mediaType,
+                mediaSrc: media.src,
+                caption: content,
+                parentId: parentId || 'folder_media',
+                isDeleted: false,
+                createdAt: new Date().toISOString()
+            });
+        });
+    } else {
+        appData.items.push({
+            id: 'item_' + Date.now(),
+            name,
+            type,
+            parentId,
+            content: type === 'link' ? linkUrl : content,
+            caption: type === 'media' ? content : '',
+            isDeleted: false,
+            reminderTime,
+            notified: false,
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    const isSuccess = await saveDataToCloud();
+    if (isSuccess) {
+        showToast('เพิ่มรายการข้อมูลเรียบร้อยแล้ว', 'success');
+        renderApp();
+        document.getElementById('create-modal').classList.add('hidden');
+    }
+});
+
+// ==========================================
+// 5. Lightbox Fullscreen Media Viewer
+// ==========================================
+function openLightbox(mediaItem) {
+    const modal = document.getElementById('lightbox-modal');
+    const display = document.getElementById('lightbox-media-display');
+    const title = document.getElementById('lightbox-title');
+    const caption = document.getElementById('lightbox-caption');
+    const date = document.getElementById('lightbox-date');
+    const downloadBtn = document.getElementById('btn-lightbox-download');
+    const shareBtn = document.getElementById('btn-lightbox-share');
+    const deleteBtn = document.getElementById('btn-lightbox-delete');
+
+    title.innerText = mediaItem.name;
+    caption.innerText = mediaItem.caption || (mediaItem.type === 'note' ? mediaItem.content : '') || 'ไม่มีคำอธิบายเพิ่มเติม';
+    date.innerText = 'บันทึกเมื่อ: ' + (mediaItem.createdAt ? new Date(mediaItem.createdAt).toLocaleString('th-TH') : 'ไม่ระบุวัน');
+
+    const src = mediaItem.mediaSrc || mediaItem.content;
+    const isVideo = mediaItem.mediaType === 'video' || (typeof src === 'string' && src.startsWith('data:video'));
+
+    if (isVideo) {
+        display.innerHTML = `<video src="${src}" controls autoplay class="lightbox-media-el"></video>`;
+    } else {
+        display.innerHTML = `<img src="${src}" alt="${mediaItem.name}" class="lightbox-media-el" />`;
+    }
+
+    downloadBtn.href = src;
+    downloadBtn.download = `${mediaItem.name}.${isVideo ? 'mp4' : 'png'}`;
+
+    shareBtn.onclick = async () => {
+        if (navigator.share && !src.startsWith('data:')) {
+            try {
+                await navigator.share({ title: mediaItem.name, text: mediaItem.caption, url: src });
+            } catch (err) {}
+        } else {
+            navigator.clipboard.writeText(src);
+            showToast('คัดลอกลิงก์/ข้อมูลสื่อเรียบร้อยแล้ว', 'success');
+        }
+    };
+
+    deleteBtn.onclick = async () => {
+        if (confirm(`ลบ "${mediaItem.name}" ไปยังถังขยะใช่หรือไม่?`)) {
+            mediaItem.isDeleted = true;
+            await saveDataToCloud();
+            closeLightbox();
+            renderApp();
+            showToast('ย้ายสื่อลงถังขยะเรียบร้อย', 'info');
+        }
+    };
+
+    modal.classList.remove('hidden');
+    refreshIcons();
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox-modal').classList.add('hidden');
+    document.getElementById('lightbox-media-display').innerHTML = '';
+}
+
+// ==========================================
+// 6. Realtime Clock & Toast Reminders
+// ==========================================
+function startRealtimeClockAndReminders() {
+    setInterval(() => {
+        const now = new Date();
+        const clockEl = document.getElementById('current-clock');
+        if (clockEl) clockEl.innerText = now.toLocaleString('th-TH');
+
+        const nowISO = now.toISOString().slice(0, 16);
+        appData.items.forEach(async (item) => {
+            if (!item.isDeleted && item.reminderTime === nowISO && !item.notified) {
+                item.notified = true;
+                await saveDataToCloud();
+                showToast(`⏰ แจ้งเตือนถึงเวลา: ${item.name}`, 'info');
+            }
+        });
+    }, 1000);
+}
+
+// ==========================================
+// 7. Render Application UI
+// ==========================================
+function renderApp() {
+    const active = appData.items.filter(i => !i.isDeleted && !i.isDefault);
+    document.getElementById('stat-total').innerText = active.length;
+    document.getElementById('stat-notes').innerText = active.filter(i => i.type === 'note' && !isMediaItem(i)).length;
+    document.getElementById('stat-media').innerText = active.filter(i => isMediaItem(i)).length;
+    document.getElementById('stat-links').innerText = active.filter(i => i.type === 'link').length;
+
+    // Breadcrumb
+    const breadcrumbEl = document.getElementById('breadcrumb');
+    if (breadcrumbEl) {
+        breadcrumbEl.innerHTML = `<span onclick="navigateToFolder('root')" class="bc-item"><i data-lucide="home"></i> หน้าแรก</span>`;
+        if (appData.currentFolderId !== 'root') {
+            const currentF = appData.items.find(i => i.id === appData.currentFolderId);
+            if (currentF) breadcrumbEl.innerHTML += ` <i data-lucide="chevron-right" class="bc-sep"></i> <span class="bc-item active">${currentF.name}</span>`;
+        }
+    }
+
+    // Grid Rendering
+    const fileListEl = document.getElementById('file-list');
+    if (fileListEl) {
+        fileListEl.innerHTML = '';
+        const searchQuery = (document.getElementById('search-input')?.value || '').toLowerCase();
+        let items = appData.items.filter(i => !i.isDeleted);
+        
+        if (searchQuery) {
+            items = items.filter(i => i.name.toLowerCase().includes(searchQuery) || (i.caption && i.caption.toLowerCase().includes(searchQuery)));
+        } else {
+            items = items.filter(i => i.parentId === appData.currentFolderId);
+        }
+
+        if (items.length === 0) {
+            fileListEl.innerHTML = `<div class="empty-state"><i data-lucide="folder-open"></i><p>ไม่พบรายการข้อมูลในส่วนนี้</p></div>`;
+        }
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            
+            if (isMediaItem(item)) {
+                card.className = 'media-card-modern';
+                const src = item.mediaSrc || item.content;
+                const isVideo = item.mediaType === 'video' || (typeof src === 'string' && src.startsWith('data:video'));
+                
+                card.innerHTML = `
+                    <div class="media-preview-wrapper">
+                        ${isVideo ? `<video src="${src}"></video><div class="play-overlay"><i data-lucide="play-circle"></i></div>` : `<img src="${src}" loading="lazy" />`}
+                        <button class="btn-card-del" onclick="softDeleteItem('${item.id}', event)"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="media-card-body">
+                        <div class="media-card-title">${item.name}</div>
+                        ${item.caption ? `<div class="media-card-caption">${item.caption}</div>` : ''}
+                    </div>
+                `;
+                card.onclick = () => openLightbox(item);
+            } else {
+                card.className = `file-card-modern ${item.type}`;
+                let iconMarkup = item.type === 'folder' ? '<i data-lucide="folder"></i>' : item.type === 'link' ? '<i data-lucide="link-2"></i>' : '<i data-lucide="file-text"></i>';
+
+                card.innerHTML = `
+                    <div class="card-icon-box">${iconMarkup}</div>
+                    <div class="card-info">
+                        <div class="card-title">${item.name}</div>
+                        ${item.reminderTime ? `<div class="time-badge"><i data-lucide="clock"></i> ${item.reminderTime.replace('T', ' ')}</div>` : ''}
+                    </div>
+                    ${!item.isDefault ? `<button class="btn-card-del" onclick="softDeleteItem('${item.id}', event)"><i data-lucide="x"></i></button>` : ''}
+                `;
+
+                if (item.type === 'folder') card.onclick = () => { appData.currentFolderId = item.id; renderApp(); };
+                else if (item.type === 'link' && item.content.startsWith('http')) card.onclick = () => window.open(item.content, '_blank');
+                else card.onclick = () => openFileModal(item.id);
+            }
+
+            fileListEl.appendChild(card);
+        });
+    }
+
+    // Trash List Rendering
+    const trashListEl = document.getElementById('trash-list');
+    const deletedItems = appData.items.filter(i => i.isDeleted);
+    document.getElementById('trash-count').innerText = deletedItems.length;
+
+    if (trashListEl) {
+        trashListEl.innerHTML = '';
+        deletedItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'trash-item-card';
+            div.innerHTML = `
+                <div class="trash-info">
+                    <i data-lucide="file"></i>
+                    <span>${item.name}</span>
+                </div>
+                <div class="trash-actions">
+                    <button class="btn btn-sm btn-ghost" onclick="restoreItem('${item.id}')"><i data-lucide="rotate-ccw"></i> กู้คืน</button>
+                    <button class="btn btn-sm btn-danger" onclick="permanentlyDeleteItem('${item.id}')"><i data-lucide="trash-2"></i> ลบถาวร</button>
+                </div>
+            `;
+            trashListEl.appendChild(div);
+        });
+    }
+
+    refreshIcons();
+}
+
+async function softDeleteItem(id, e) {
+    if (e) e.stopPropagation();
+    const item = appData.items.find(i => i.id === id);
+    if (item && !item.isDefault) {
+        item.isDeleted = true;
+        await saveDataToCloud();
+        renderApp();
+        showToast(`ย้าย ${item.name} ไปยังถังขยะแล้ว`, 'info');
+    }
+}
+
+async function restoreItem(id) {
+    const item = appData.items.find(i => i.id === id);
+    if (item) {
+        item.isDeleted = false;
+        await saveDataToCloud();
+        renderApp();
+        showToast(`กู้คืน ${item.name} สำเร็จ`, 'success');
+    }
+}
+
+async function permanentlyDeleteItem(id) {
+    if (confirm('ต้องการลบทิ้งถาวรหรือไม่?')) {
+        appData.items = appData.items.filter(i => i.id !== id);
+        await saveDataToCloud();
+        renderApp();
+        showToast('ลบรายการถาวรเรียบร้อยแล้ว', 'info');
+    }
+}
+
+function openFileModal(id) {
+    const item = appData.items.find(i => i.id === id);
+    if (!item) return;
+    appData.activeEditingId = id;
+    document.getElementById('modal-title').innerText = item.name;
+    document.getElementById('modal-reminder-time').value = item.reminderTime || '';
+    document.getElementById('modal-file-content').value = item.content || '';
+    document.getElementById('file-modal').classList.remove('hidden');
+    refreshIcons();
+}
+
+async function saveFileContent() {
+    if (!appData.activeEditingId) return;
+    const item = appData.items.find(i => i.id === appData.activeEditingId);
+    if (item) {
+        item.content = document.getElementById('modal-file-content').value;
+        item.reminderTime = document.getElementById('modal-reminder-time').value;
+        await saveDataToCloud();
+        renderApp();
+        document.getElementById('file-modal').classList.add('hidden');
+        showToast('บันทึกการแก้ไขเรียบร้อยแล้ว', 'success');
+    }
+}
+
+function updateStatus(isOnline) {
+    const el = document.getElementById('sync-status');
+    if (el) {
+        el.innerHTML = isOnline ? '<i data-lucide="wifi"></i> Connected' : '<i data-lucide="wifi-off"></i> Offline';
+        el.className = isOnline ? 'status-badge online' : 'status-badge offline';
+        refreshIcons();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    document.getElementById('btn-open-create-modal')?.addEventListener('click', openCreateModal);
+    document.getElementById('btn-close-create-modal')?.addEventListener('click', () => document.getElementById('create-modal').classList.add('hidden'));
+    document.getElementById('btn-close-modal-cancel')?.addEventListener('click', () => document.getElementById('create-modal').classList.add('hidden'));
+    document.getElementById('btn-close-modal')?.addEventListener('click', () => document.getElementById('file-modal').classList.add('hidden'));
+    document.getElementById('btn-save-file')?.addEventListener('click', saveFileContent);
+    document.getElementById('search-input')?.addEventListener('input', renderApp);
+});
