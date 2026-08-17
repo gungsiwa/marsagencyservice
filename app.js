@@ -36,6 +36,39 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================
+// Mobile Sidebar Menu Controller
+// ==========================================
+function initMobileSidebar() {
+    const toggleBtn = document.getElementById('btn-toggle-sidebar');
+    const closeBtn = document.getElementById('btn-close-sidebar');
+    const sidebar = document.getElementById('main-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    function openSidebar() {
+        sidebar?.classList.add('open');
+        backdrop?.classList.add('active');
+    }
+
+    function closeSidebar() {
+        sidebar?.classList.remove('open');
+        backdrop?.classList.remove('active');
+    }
+
+    toggleBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // Auto close sidebar when clicking menu items on mobile
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+        });
+    });
+}
+
+// ==========================================
 // 1. Authentication
 // ==========================================
 document.getElementById('login-form')?.addEventListener('submit', (e) => {
@@ -139,7 +172,7 @@ function isMediaItem(item) {
 }
 
 // ==========================================
-// 3. Navigation & Tab Switcher (Fixed Highlight Bug)
+// 3. Navigation & Tab Switcher
 // ==========================================
 function switchTab(tabName, activeNavId = null) {
     document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
@@ -234,7 +267,6 @@ function handleSelectedMediaFiles(files) {
     });
 }
 
-// Global Drag & Drop Listener
 function initGlobalDragAndDrop() {
     const workspace = document.getElementById('global-drop-zone');
     if (!workspace) return;
@@ -447,7 +479,7 @@ function renderApp() {
         }
 
         if (items.length === 0) {
-            fileListEl.innerHTML = `<div class="empty-state"><i data-lucide="folder-open"></i><p>ไม่พบรายการข้อมูลในส่วนนี้</p></div>`;
+            fileListEl.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 40px 0; color: var(--text-muted);"><i data-lucide="folder-open" style="width: 48px; height: 48px; margin-bottom: 8px;"></i><p>ไม่พบรายการข้อมูลในส่วนนี้</p></div>`;
         }
 
         items.forEach(item => {
@@ -508,7 +540,7 @@ function renderApp() {
                 </div>
                 <div class="trash-actions">
                     <button class="btn btn-sm btn-ghost" onclick="restoreItem('${item.id}')"><i data-lucide="rotate-ccw"></i> กู้คืน</button>
-                    <button class="btn btn-sm btn-danger" onclick="permanentlyDeleteItem('${item.id}')"><i data-lucide="trash-2"></i> ลบถาวร</button>
+                    <button class="btn btn-sm btn-danger-outline" onclick="permanentlyDeleteItem('${item.id}')"><i data-lucide="trash-2"></i> ลบถาวร</button>
                 </div>
             `;
             trashListEl.appendChild(div);
@@ -583,6 +615,7 @@ function updateStatus(isOnline) {
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    initMobileSidebar();
     document.getElementById('btn-open-create-modal')?.addEventListener('click', openCreateModal);
     document.getElementById('btn-close-create-modal')?.addEventListener('click', () => document.getElementById('create-modal').classList.add('hidden'));
     document.getElementById('btn-close-modal-cancel')?.addEventListener('click', () => document.getElementById('create-modal').classList.add('hidden'));

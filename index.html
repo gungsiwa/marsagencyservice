@@ -19,6 +19,20 @@
     <!-- Toast Notification Container -->
     <div id="toast-container"></div>
 
+    <!-- Mobile Navigation Bar -->
+    <header class="mobile-navbar">
+        <div class="mobile-brand">
+            <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
+            <span class="mobile-brand-title">MARS DMS</span>
+        </div>
+        <button id="btn-toggle-sidebar" class="btn-icon-menu">
+            <i data-lucide="menu"></i>
+        </button>
+    </header>
+
+    <!-- Backdrop for mobile drawer -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
     <!-- 1. Login Screen -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card">
@@ -57,13 +71,14 @@
     <div id="app-screen" class="app-layout hidden">
         
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="main-sidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
                 <div class="brand-title">
                     <h2>MARS DMS</h2>
                     <span class="version-tag">v2.0 NEXT-GEN</span>
                 </div>
+                <button id="btn-close-sidebar" class="btn-close-sidebar"><i data-lucide="x"></i></button>
             </div>
             
             <div class="user-profile-box">
