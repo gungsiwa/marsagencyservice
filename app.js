@@ -353,9 +353,10 @@ function renderTrash() {
     refreshIcons();
 }
 
-// Modal Controllers
+// Modal Controllers & Dynamic Form Fields
 function openCreateModal() {
     populateParentDropdown();
+    toggleCreateFields();
     document.getElementById('create-modal')?.classList.remove('hidden');
     refreshIcons();
 }
@@ -366,14 +367,22 @@ function closeCreateModal() {
 
 function toggleCreateFields() {
     const type = document.getElementById('create-type').value;
+    const contentGroup = document.getElementById('content-input-group');
     const linkGroup = document.getElementById('link-input-group');
     const mediaGroup = document.getElementById('media-upload-group');
 
+    // ซ่อนทั้งหมดก่อน
+    contentGroup?.classList.add('hidden');
     linkGroup?.classList.add('hidden');
     mediaGroup?.classList.add('hidden');
 
-    if (type === 'link') linkGroup?.classList.remove('hidden');
-    if (type === 'media') mediaGroup?.classList.remove('hidden');
+    if (type === 'note' || type === 'folder') {
+        contentGroup?.classList.remove('hidden');
+    } else if (type === 'link') {
+        linkGroup?.classList.remove('hidden');
+    } else if (type === 'media') {
+        mediaGroup?.classList.remove('hidden');
+    }
 }
 
 function populateParentDropdown() {
@@ -391,10 +400,19 @@ async function submitCreateItem() {
     const parentId = document.getElementById('create-parent').value;
     const title = document.getElementById('create-title').value.trim();
     const tags = document.getElementById('create-tags').value.trim();
-    const content = document.getElementById('create-content').value;
+    const reminderTime = document.getElementById('create-reminder-time')?.value || '';
+    
+    let content = '';
+    if (type === 'link') {
+        content = document.getElementById('create-link-url')?.value.trim() || '';
+    } else if (type === 'media') {
+        content = appData.stagedMediaFiles.length > 0 ? JSON.stringify(appData.stagedMediaFiles) : '';
+    } else {
+        content = document.getElementById('create-content')?.value || '';
+    }
 
     if (!title) {
-        showToast('กรุณาระบุหัวข้อ/ชื่อไฟล์', 'error');
+        showToast('กรุณาระบุหัวข้อ/ชื่อรายการ', 'error');
         return;
     }
 
@@ -405,11 +423,13 @@ async function submitCreateItem() {
         parentId: parentId,
         tags: tags,
         content: content,
+        reminderTime: reminderTime,
         createdAt: new Date().toISOString(),
         isDeleted: false
     };
 
     appData.items.push(newItem);
+    appData.stagedMediaFiles = []; // เคลียร์ไฟล์ที่เลือกไว้
     addLog(`สร้าง ${type}: ${title}`);
     
     await syncToCloud();
@@ -423,17 +443,14 @@ function openItemDetail(itemId) {
     const item = appData.items.find(i => i.id === itemId);
     if (!item) return;
 
-    // ถ้าเป็นโฟลเดอร์ ให้กดเข้าไปข้างในโฟลเดอร์
     if (item.type === 'folder') {
         navigateToFolder(item.id);
         return;
     }
 
-    // ถ้าเป็นลิงก์ (link) ให้เปิดเว็บไซต์ปลายทางทันทีในแท็บใหม่
     if (item.type === 'link') {
         if (item.content) {
             let targetUrl = item.content.trim();
-            // ถ้าลิงก์ไม่ได้ขึ้นต้นด้วย http ให้เติม https:// ให้
             if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
                 targetUrl = 'https://' + targetUrl;
             }
@@ -444,10 +461,13 @@ function openItemDetail(itemId) {
         return;
     }
 
-    // สำหรับประเภทอื่นๆ (เช่น โน้ต) ให้เปิดหน้าต่าง Modal แก้ไขข้อมูลตามปกติ
     appData.activeEditingId = itemId;
     document.getElementById('modal-title').innerText = item.name;
     document.getElementById('modal-file-content').value = item.content || '';
+    
+    const reminderInput = document.getElementById('modal-reminder-time');
+    if (reminderInput) reminderInput.value = item.reminderTime || '';
+
     document.getElementById('file-modal')?.classList.remove('hidden');
     refreshIcons();
 }
@@ -460,6 +480,9 @@ async function saveFileEdits() {
     const item = appData.items.find(i => i.id === appData.activeEditingId);
     if (item) {
         item.content = document.getElementById('modal-file-content').value;
+        const reminderInput = document.getElementById('modal-reminder-time');
+        if (reminderInput) item.reminderTime = reminderInput.value;
+
         addLog(`แก้ไข: ${item.name}`);
         await syncToCloud();
         showToast('บันทึกการแก้ไขเรียบร้อย', 'success');
@@ -490,7 +513,34 @@ async function permanentlyDeleteItem(id) {
 }
 
 function handleFileSelect(event) {
-    showToast(`เลือกไฟล์เรียบร้อยแล้ว (${event.target.files.length} ไฟล์)`, 'info');
+    const files = event.target.files;
+    const previewContainer = document.getElementById('media-previews-container');
+    if (!previewContainer) return;
+
+    for (let file of files) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            appData.stagedMediaFiles.push({
+                name: file.name,
+                type: file.type,
+                data: e.target.result
+            });
+            
+            const thumb = document.createElement('div');
+            thumb.style.display = 'inline-block';
+            thumb.style.margin = '5px';
+            thumb.style.position = 'relative';
+            
+            if (file.type.startsWith('image/')) {
+                thumb.innerHTML = `<img src="${e.target.result}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />`;
+            } else {
+                thumb.innerHTML = `<div style="width: 60px; height: 60px; background: #333; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border-radius: 4px;">VIDEO</div>`;
+            }
+            previewContainer.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    }
+    showToast(`เลือกไฟล์เรียบร้อยแล้ว (${files.length} ไฟล์)`, 'info');
 }
 
 function closeLightbox() {
