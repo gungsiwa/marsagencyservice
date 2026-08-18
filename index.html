@@ -2,34 +2,27 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mars Cloud System - Space Fleet Edition</title>
     
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- CSS Style -->
     <link rel="stylesheet" href="style.css">
 
-    <!-- External Libraries (โหลดแบบ defer ป้องกันการค้างบนมือถือ) -->
     <script src="https://unpkg.com/lucide@latest" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="app.js" defer></script>
 </head>
 <body>
 
-    <!-- Canvas แสดง Effect พื้นหลัง -->
     <canvas id="space-bg-canvas"></canvas>
 
-    <!-- Toast Notification Container -->
     <div id="toast-container"></div>
 
-    <!-- ฉากหลังสีดำเบลอ สำหรับ Mobile Sidebar (วางไว้ตรงนี้เพื่อไม่ให้ทับซ้อนเมนู) -->
     <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
-    <!-- Spotlight Command Bar Overlay (Ctrl + K) -->
     <div id="command-bar-overlay" class="command-overlay hidden">
         <div class="command-box">
             <div class="command-input-wrapper">
@@ -40,7 +33,6 @@
         </div>
     </div>
 
-    <!-- 1. หน้าจอ Login -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card">
             <div class="brand-badge">
@@ -53,13 +45,13 @@
                 <div class="form-group mb-2">
                     <div class="input-glow">
                         <i data-lucide="user"></i>
-                        <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน (Username)" required>
+                        <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน (Username)" required autocomplete="username">
                     </div>
                 </div>
                 <div class="form-group mb-2">
                     <div class="input-glow">
                         <i data-lucide="lock"></i>
-                        <input type="password" id="login-password" placeholder="รหัสผ่าน (Password)" required>
+                        <input type="password" id="login-password" placeholder="รหัสผ่าน (Password)" required autocomplete="current-password">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block btn-glow">
@@ -70,21 +62,18 @@
         </div>
     </div>
 
-    <!-- 2. หน้าหลัก (Main Application Layout) -->
     <div id="app-screen" class="app-layout hidden">
 
-        <!-- Header บนมือถือ (ปุ่ม 3 ขีด) -->
         <header class="mobile-navbar">
             <div class="mobile-brand">
                 <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
                 <span class="mobile-brand-title">MARS DMS</span>
             </div>
-            <button id="btn-toggle-sidebar" class="btn-icon-menu">
+            <button id="btn-toggle-sidebar" class="btn-icon-menu" type="button" aria-label="Toggle Menu">
                 <i data-lucide="menu"></i>
             </button>
         </header>
 
-        <!-- แถบ Sidebar ด้านซ้าย -->
         <aside id="main-sidebar" class="sidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
@@ -92,7 +81,7 @@
                     <h2>MARS DMS</h2>
                     <span class="version-tag">Space Fleet v3.0</span>
                 </div>
-                <button id="btn-close-sidebar" class="btn-close-sidebar">
+                <button id="btn-close-sidebar" class="btn-close-sidebar" type="button" aria-label="Close Menu">
                     <i data-lucide="x"></i>
                 </button>
             </div>
@@ -120,12 +109,11 @@
                 </a>
             </nav>
 
-            <button id="btn-logout" class="btn btn-danger-outline btn-block mt-auto">
+            <button id="btn-logout" class="btn btn-danger-outline btn-block mt-auto" type="button" onclick="logout()">
                 <i data-lucide="log-out"></i> ออกจากระบบ
             </button>
         </aside>
 
-        <!-- พื้นที่แสดงเนื้อหาหลัก -->
         <main class="main-wrapper" id="global-drop-zone">
             
             <div class="topbar">
@@ -136,7 +124,7 @@
                 <div class="topbar-right">
                     <div class="clock-badge"><i data-lucide="clock"></i> <span id="current-clock">--:--:--</span></div>
                     <div id="sync-status" class="status-badge online"><i data-lucide="wifi"></i> Connected</div>
-                    <button id="btn-open-create-modal" class="btn btn-cyan btn-glow">
+                    <button id="btn-open-create-modal" class="btn btn-cyan btn-glow" type="button">
                         <i data-lucide="plus-circle"></i> สร้างรายการใหม่
                     </button>
                 </div>
@@ -144,7 +132,6 @@
 
             <div class="content-body">
 
-                <!-- VIEW 1: Dashboard View -->
                 <div id="view-dashboard" class="tab-view">
                     <div class="stat-cards-grid">
                         <div class="stat-card card-cyan" onclick="navigateToFolder('root')">
@@ -181,7 +168,7 @@
                         <div class="widget-box">
                             <div class="widget-header">
                                 <h4><i data-lucide="edit-3"></i> Quick Scratchpad (บันทึกด่วน)</h4>
-                                <button class="btn btn-sm btn-ghost" onclick="saveScratchpad()"><i data-lucide="save"></i> บันทึก</button>
+                                <button class="btn btn-sm btn-ghost" type="button" onclick="saveScratchpad()"><i data-lucide="save"></i> บันทึก</button>
                             </div>
                             <textarea id="quick-scratchpad" placeholder="พิมพ์ข้อความบันทึกชั่วคราวที่นี่..."></textarea>
                         </div>
@@ -194,7 +181,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 2: Files View -->
                 <div id="view-files" class="tab-view hidden">
                     <div class="toolbar-bar">
                         <div class="search-field">
@@ -203,15 +189,14 @@
                         </div>
                         <div class="view-controls">
                             <div class="view-switcher-toggle">
-                                <button id="btn-view-grid" class="btn-toggle active"><i data-lucide="grid"></i></button>
-                                <button id="btn-view-list" class="btn-toggle"><i data-lucide="list"></i></button>
+                                <button id="btn-view-grid" class="btn-toggle active" type="button" onclick="setTileView('grid')"><i data-lucide="grid"></i></button>
+                                <button id="btn-view-list" class="btn-toggle" type="button" onclick="setTileView('list')"><i data-lucide="list"></i></button>
                             </div>
                         </div>
                     </div>
                     <div id="file-list" class="file-grid view-grid"></div>
                 </div>
 
-                <!-- VIEW 3: Trash View -->
                 <div id="view-trash" class="tab-view hidden">
                     <div id="trash-list" class="trash-grid"></div>
                 </div>
@@ -220,16 +205,15 @@
         </main>
     </div>
 
-    <!-- 3. Modal สร้าง/เพิ่มข้อมูล -->
     <div id="create-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3><i data-lucide="plus-square"></i> สร้างรายการใหม่</h3>
-                <button id="btn-close-create-modal" class="btn-close"><i data-lucide="x"></i></button>
+                <button id="btn-close-create-modal" class="btn-close" type="button"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>ประเภทรายการ:</label>
+                    <label for="create-type">ประเภทรายการ:</label>
                     <select id="create-type">
                         <option value="note">📝 โน้ตข้อความ</option>
                         <option value="media">🖼️ ภาพ / วิดีโอ</option>
@@ -237,32 +221,26 @@
                         <option value="folder">📁 โฟลเดอร์ใหม่</option>
                     </select>
                 </div>
-
                 <div class="form-group">
-                    <label>ตำแหน่งจัดเก็บ:</label>
+                    <label for="create-parent">ตำแหน่งจัดเก็บ:</label>
                     <select id="create-parent"></select>
                 </div>
-
                 <div class="form-group">
-                    <label>หัวข้อ / ชื่อไฟล์:</label>
+                    <label for="create-title">หัวข้อ / ชื่อไฟล์:</label>
                     <input type="text" id="create-title" placeholder="เช่น รายงานประจำวัน, ภาพกิจกรรม" />
                 </div>
-
                 <div class="form-group">
-                    <label>แท็ก (ใส่เครื่องหมายจุลภาค , คั่น):</label>
+                    <label for="create-tags">แท็ก (ใส่เครื่องหมายจุลภาค , คั่น):</label>
                     <input type="text" id="create-tags" placeholder="เช่น สำคัญ, งาน, ด่วน" />
                 </div>
-
                 <div class="form-group">
-                    <label>⏰ ตั้งเวลาแจ้งเตือน (Optional):</label>
+                    <label for="create-reminder-time">⏰ ตั้งเวลาแจ้งเตือน (Optional):</label>
                     <input type="datetime-local" id="create-reminder-time" />
                 </div>
-
                 <div id="link-input-group" class="form-group hidden">
-                    <label>URL ลิงก์:</label>
+                    <label for="create-link-url">URL ลิงก์:</label>
                     <input type="url" id="create-link-url" placeholder="https://example.com" />
                 </div>
-
                 <div id="media-upload-group" class="form-group hidden">
                     <label id="media-upload-label">เลือกไฟล์ภาพ / วิดีโอ:</label>
                     <div id="drop-zone" class="drop-zone">
@@ -272,23 +250,21 @@
                     </div>
                     <div id="media-previews-container" class="media-upload-previews"></div>
                 </div>
-
                 <div id="content-input-group" class="form-group">
-                    <label id="content-label">รายละเอียด / เนื้อหา:</label>
+                    <label id="content-label" for="create-content">รายละเอียด / เนื้อหา:</label>
                     <textarea id="create-content" rows="4" placeholder="พิมพ์รายละเอียดที่ต้องการบันทึก..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="btn-close-modal-cancel" class="btn btn-ghost">ยกเลิก</button>
-                <button id="btn-submit-create" class="btn btn-primary"><i data-lucide="check"></i> บันทึกข้อมูล</button>
+                <button id="btn-close-modal-cancel" class="btn btn-ghost" type="button">ยกเลิก</button>
+                <button id="btn-submit-create" class="btn btn-primary" type="button"><i data-lucide="check"></i> บันทึกข้อมูล</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. Lightbox Modal แสดงสื่อ -->
     <div id="lightbox-modal" class="lightbox-overlay hidden">
         <div class="lightbox-container">
-            <button class="btn-lightbox-close" onclick="closeLightbox()"><i data-lucide="x"></i></button>
+            <button class="btn-lightbox-close" type="button" onclick="closeLightbox()"><i data-lucide="x"></i></button>
             <div id="lightbox-media-display" class="lightbox-content"></div>
             <div class="lightbox-sidebar">
                 <h3 id="lightbox-title">สื่อมีเดีย</h3>
@@ -301,10 +277,10 @@
                     <a id="btn-lightbox-download" class="btn btn-primary btn-block" download>
                         <i data-lucide="download"></i> ดาวน์โหลดไฟล์
                     </a>
-                    <button id="btn-lightbox-share" class="btn btn-ghost btn-block mb-2">
+                    <button id="btn-lightbox-share" class="btn btn-ghost btn-block mb-2" type="button">
                         <i data-lucide="share-2"></i> แชร์ / คัดลอกลิงก์
                     </button>
-                    <button id="btn-lightbox-delete" class="btn btn-danger-outline btn-block">
+                    <button id="btn-lightbox-delete" class="btn btn-danger-outline btn-block" type="button">
                         <i data-lucide="trash-2"></i> ลบสื่อนี้
                     </button>
                 </div>
@@ -312,31 +288,26 @@
         </div>
     </div>
 
-    <!-- 5. Modal สำหรับอ่าน/แก้ไขไฟล์ Note -->
     <div id="file-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3 id="modal-title">รายละเอียดโน้ต</h3>
-                <button id="btn-close-modal" class="btn-close"><i data-lucide="x"></i></button>
+                <button id="btn-close-modal" class="btn-close" type="button"><i data-lucide="x"></i></button>
             </div>
-            
             <div class="modal-body">
                 <div class="form-group">
-                    <label>⏰ เวลาแจ้งเตือน:</label>
+                    <label for="modal-reminder-time">⏰ เวลาแจ้งเตือน:</label>
                     <input type="datetime-local" id="modal-reminder-time" />
                 </div>
-
                 <div id="modal-note-media-display" class="note-embedded-media-box hidden"></div>
-
                 <div class="form-group">
-                    <label>รายละเอียดเนื้อหา:</label>
+                    <label for="modal-file-content">รายละเอียดเนื้อหา:</label>
                     <textarea id="modal-file-content" rows="6"></textarea>
                 </div>
             </div>
-            
             <div class="modal-footer">
-                <button onclick="shareActiveNote()" class="btn btn-ghost"><i data-lucide="share-2"></i> แชร์</button>
-                <button id="btn-save-file" class="btn btn-primary"><i data-lucide="save"></i> บันทึกการแก้ไข</button>
+                <button onclick="shareActiveNote()" class="btn btn-ghost" type="button"><i data-lucide="share-2"></i> แชร์</button>
+                <button id="btn-save-file" class="btn btn-primary" type="button"><i data-lucide="save"></i> บันทึกการแก้ไข</button>
             </div>
         </div>
     </div>
