@@ -355,6 +355,10 @@ function renderTrash() {
 
 // Modal Controllers & Dynamic Form Fields
 function openCreateModal() {
+    appData.stagedMediaFiles = [];
+    const previewContainer = document.getElementById('media-previews-container');
+    if (previewContainer) previewContainer.innerHTML = '';
+
     populateParentDropdown();
     toggleCreateFields();
     document.getElementById('create-modal')?.classList.remove('hidden');
@@ -375,7 +379,10 @@ function toggleCreateFields() {
     linkGroup?.classList.add('hidden');
     mediaGroup?.classList.add('hidden');
 
-    if (type === 'note' || type === 'folder') {
+    if (type === 'note') {
+        contentGroup?.classList.remove('hidden');
+        mediaGroup?.classList.remove('hidden'); // โน้ตสามารถแนบไฟล์มีเดียได้ด้วย
+    } else if (type === 'folder') {
         contentGroup?.classList.remove('hidden');
     } else if (type === 'link') {
         linkGroup?.classList.remove('hidden');
@@ -402,10 +409,19 @@ async function submitCreateItem() {
     const reminderTime = document.getElementById('create-reminder-time')?.value || '';
     
     let content = '';
+    let mediaData = appData.stagedMediaFiles.length > 0 ? appData.stagedMediaFiles : [];
+
     if (type === 'link') {
         content = document.getElementById('create-link-url')?.value.trim() || '';
     } else if (type === 'media') {
-        content = appData.stagedMediaFiles.length > 0 ? JSON.stringify(appData.stagedMediaFiles) : '';
+        content = JSON.stringify(mediaData);
+    } else if (type === 'note') {
+        const textContent = document.getElementById('create-content')?.value || '';
+        // เก็บทั้งข้อความและไฟล์มีเดียที่แนบมากับโน้ตในโครงสร้างเดียวกัน
+        content = JSON.stringify({
+            text: textContent,
+            media: mediaData
+        });
     } else {
         content = document.getElementById('create-content')?.value || '';
     }
@@ -460,56 +476,56 @@ function openItemDetail(itemId) {
         return;
     }
 
-    // หากเป็นประเภท Media ให้เปิด Lightbox ทันที
     if (item.type === 'media') {
         openLightbox(item);
         return;
     }
 
-    // หากเป็น Note: ตรวจสอบว่าในเนื้อหามีภาพ/วิดีโอหรือลิงก์หรือไม่ หรือแสดงผลแบบกระดาษโน้ต
+    // เปิดหน้าต่างรายละเอียดโน้ต (Note Detail Modal) ทันที
     appData.activeEditingId = itemId;
     document.getElementById('modal-title').innerText = item.name;
     
-    const contentText = item.content || '';
-    
-    // ตรวจสอบและแปลงข้อความลิงก์ในเนื้อหาให้กดคลิกได้ หรือตรวจสอบว่ามีไฟล์มีเดียแนบมาด้วยไหม
-    let displayHtml = '';
-    
-    // พยายามแปลงลิงก์ในข้อความให้เป็น <a> แอตทริบิวต์
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const formattedText = contentText.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" style="color: var(--primary-cyan); text-decoration: underline;">${url}</a>`;
-    });
+    let rawContent = item.content || '';
+    let textValue = rawContent;
+    let mediaList = [];
+
+    // ตรวจสอบรูปแบบโครงสร้างข้อมูลโน้ต (JSON หรือข้อความธรรมดา)
+    try {
+        const parsed = JSON.parse(rawContent);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            textValue = parsed.text || '';
+            mediaList = parsed.media || [];
+        } else if (Array.isArray(parsed)) {
+            mediaList = parsed;
+            textValue = '';
+        }
+    } catch (e) {
+        textValue = rawContent;
+    }
 
     const noteContentEl = document.getElementById('modal-file-content');
     if (noteContentEl) {
-        // ให้ช่องแก้ไขข้อความรองรับการแสดงผล
-        noteContentEl.value = contentText;
+        noteContentEl.value = textValue;
     }
 
-    // ตรวจสอบว่ามีมีเดียฝังอยู่ในโน้ตไหม
+    // แสดงผลมีเดียที่แนบมากับโน้ต (สามารถคลิกเพื่อเปิด Lightbox หรือดาวน์โหลดได้)
     const embeddedMediaBox = document.getElementById('modal-note-media-display');
     if (embeddedMediaBox) {
         embeddedMediaBox.innerHTML = '';
-        try {
-            const parsedMedia = JSON.parse(contentText);
-            if (Array.isArray(parsedMedia) && parsedMedia.length > 0) {
-                embeddedMediaBox.classList.remove('hidden');
-                parsedMedia.forEach(media => {
-                    const mWrap = document.createElement('div');
-                    mWrap.style.margin = '10px 0';
-                    mWrap.style.textAlign = 'center';
-                    if (media.type && media.type.startsWith('image/')) {
-                        mWrap.innerHTML = `<img src="${media.data}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer;" onclick="openLightboxForData('${media.name}', '${media.data}', '${media.type}')"/>`;
-                    } else if (media.type && media.type.startsWith('video/')) {
-                        mWrap.innerHTML = `<video src="${media.data}" controls style="max-width: 100%; max-height: 250px; border-radius: 6px;"></video>`;
-                    }
-                    embeddedMediaBox.appendChild(mWrap);
-                });
-            } else {
-                embeddedMediaBox.classList.add('hidden');
-            }
-        } catch (e) {
+        if (mediaList.length > 0) {
+            embeddedMediaBox.classList.remove('hidden');
+            mediaList.forEach(media => {
+                const mWrap = document.createElement('div');
+                mWrap.style.margin = '10px 0';
+                mWrap.style.textAlign = 'center';
+                if (media.type && media.type.startsWith('image/')) {
+                    mWrap.innerHTML = `<img src="${media.data}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer;" onclick="openLightboxForData('${media.name}', '${media.data}', '${media.type}')" title="คลิกเพื่อดูขนาดใหญ่"/>`;
+                } else if (media.type && media.type.startsWith('video/')) {
+                    mWrap.innerHTML = `<video src="${media.data}" controls style="max-width: 100%; max-height: 250px; border-radius: 6px;"></video>`;
+                }
+                embeddedMediaBox.appendChild(mWrap);
+            });
+        } else {
             embeddedMediaBox.classList.add('hidden');
         }
     }
@@ -521,7 +537,7 @@ function openItemDetail(itemId) {
     refreshIcons();
 }
 
-// เปิด Lightbox สำหรับมีเดียทั่วไป หรือมีเดียที่อยู่ในโน้ต
+// เปิด Lightbox สำหรับมีเดียทั่วไป หรือมีเดียในโน้ต
 function openLightbox(item) {
     const lightbox = document.getElementById('lightbox-modal');
     const display = document.getElementById('lightbox-media-display');
@@ -539,8 +555,15 @@ function openLightbox(item) {
     display.innerHTML = '';
 
     try {
-        const mediaFiles = JSON.parse(item.content || '[]');
-        if (Array.isArray(mediaFiles) && mediaFiles.length > 0) {
+        let mediaFiles = [];
+        const parsed = JSON.parse(item.content || '[]');
+        if (Array.isArray(parsed)) {
+            mediaFiles = parsed;
+        } else if (parsed && parsed.media) {
+            mediaFiles = parsed.media;
+        }
+
+        if (mediaFiles.length > 0) {
             mediaFiles.forEach(file => {
                 const wrap = document.createElement('div');
                 wrap.style.marginBottom = '15px';
@@ -634,7 +657,21 @@ function closeFileModal() {
 async function saveFileEdits() {
     const item = appData.items.find(i => i.id === appData.activeEditingId);
     if (item) {
-        item.content = document.getElementById('modal-file-content').value;
+        const newText = document.getElementById('modal-file-content').value;
+        
+        // รักษาโครงสร้างมีเดียเดิมไว้ และอัปเดตเฉพาะข้อความใหม่
+        try {
+            const parsed = JSON.parse(item.content);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                parsed.text = newText;
+                item.content = JSON.stringify(parsed);
+            } else {
+                item.content = newText;
+            }
+        } catch (e) {
+            item.content = newText;
+        }
+
         const reminderInput = document.getElementById('modal-reminder-time');
         if (reminderInput) item.reminderTime = reminderInput.value;
 
