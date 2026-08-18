@@ -371,7 +371,6 @@ function toggleCreateFields() {
     const linkGroup = document.getElementById('link-input-group');
     const mediaGroup = document.getElementById('media-upload-group');
 
-    // ซ่อนทั้งหมดก่อน
     contentGroup?.classList.add('hidden');
     linkGroup?.classList.add('hidden');
     mediaGroup?.classList.add('hidden');
@@ -429,16 +428,16 @@ async function submitCreateItem() {
     };
 
     appData.items.push(newItem);
-    appData.stagedMediaFiles = []; // เคลียร์ไฟล์ที่เลือกไว้
+    appData.stagedMediaFiles = []; 
     addLog(`สร้าง ${type}: ${title}`);
     
     await syncToCloud();
-    
     closeCreateModal();
     renderApp();
     showToast('สร้างรายการเรียบร้อยแล้ว', 'success');
 }
 
+// Handling Item Clicks & Smart Openers
 function openItemDetail(itemId) {
     const item = appData.items.find(i => i.id === itemId);
     if (!item) return;
@@ -461,15 +460,171 @@ function openItemDetail(itemId) {
         return;
     }
 
+    // หากเป็นประเภท Media ให้เปิด Lightbox ทันที
+    if (item.type === 'media') {
+        openLightbox(item);
+        return;
+    }
+
+    // หากเป็น Note: ตรวจสอบว่าในเนื้อหามีภาพ/วิดีโอหรือลิงก์หรือไม่ หรือแสดงผลแบบกระดาษโน้ต
     appData.activeEditingId = itemId;
     document.getElementById('modal-title').innerText = item.name;
-    document.getElementById('modal-file-content').value = item.content || '';
+    
+    const contentText = item.content || '';
+    
+    // ตรวจสอบและแปลงข้อความลิงก์ในเนื้อหาให้กดคลิกได้ หรือตรวจสอบว่ามีไฟล์มีเดียแนบมาด้วยไหม
+    let displayHtml = '';
+    
+    // พยายามแปลงลิงก์ในข้อความให้เป็น <a> แอตทริบิวต์
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const formattedText = contentText.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: var(--primary-cyan); text-decoration: underline;">${url}</a>`;
+    });
+
+    const noteContentEl = document.getElementById('modal-file-content');
+    if (noteContentEl) {
+        // ให้ช่องแก้ไขข้อความรองรับการแสดงผล
+        noteContentEl.value = contentText;
+    }
+
+    // ตรวจสอบว่ามีมีเดียฝังอยู่ในโน้ตไหม
+    const embeddedMediaBox = document.getElementById('modal-note-media-display');
+    if (embeddedMediaBox) {
+        embeddedMediaBox.innerHTML = '';
+        try {
+            const parsedMedia = JSON.parse(contentText);
+            if (Array.isArray(parsedMedia) && parsedMedia.length > 0) {
+                embeddedMediaBox.classList.remove('hidden');
+                parsedMedia.forEach(media => {
+                    const mWrap = document.createElement('div');
+                    mWrap.style.margin = '10px 0';
+                    mWrap.style.textAlign = 'center';
+                    if (media.type && media.type.startsWith('image/')) {
+                        mWrap.innerHTML = `<img src="${media.data}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer;" onclick="openLightboxForData('${media.name}', '${media.data}', '${media.type}')"/>`;
+                    } else if (media.type && media.type.startsWith('video/')) {
+                        mWrap.innerHTML = `<video src="${media.data}" controls style="max-width: 100%; max-height: 250px; border-radius: 6px;"></video>`;
+                    }
+                    embeddedMediaBox.appendChild(mWrap);
+                });
+            } else {
+                embeddedMediaBox.classList.add('hidden');
+            }
+        } catch (e) {
+            embeddedMediaBox.classList.add('hidden');
+        }
+    }
     
     const reminderInput = document.getElementById('modal-reminder-time');
     if (reminderInput) reminderInput.value = item.reminderTime || '';
 
     document.getElementById('file-modal')?.classList.remove('hidden');
     refreshIcons();
+}
+
+// เปิด Lightbox สำหรับมีเดียทั่วไป หรือมีเดียที่อยู่ในโน้ต
+function openLightbox(item) {
+    const lightbox = document.getElementById('lightbox-modal');
+    const display = document.getElementById('lightbox-media-display');
+    const titleEl = document.getElementById('lightbox-title');
+    const dateEl = document.getElementById('lightbox-date');
+    const captionEl = document.getElementById('lightbox-caption');
+    const downloadBtn = document.getElementById('btn-lightbox-download');
+
+    if (!lightbox) return;
+
+    titleEl.innerText = item.name;
+    dateEl.innerText = item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : '';
+    captionEl.innerText = item.tags ? `แท็ก: ${item.tags}` : 'ไม่มีแท็กเพิ่มเติม';
+
+    display.innerHTML = '';
+
+    try {
+        const mediaFiles = JSON.parse(item.content || '[]');
+        if (Array.isArray(mediaFiles) && mediaFiles.length > 0) {
+            mediaFiles.forEach(file => {
+                const wrap = document.createElement('div');
+                wrap.style.marginBottom = '15px';
+                wrap.style.textAlign = 'center';
+                
+                if (file.type && file.type.startsWith('image/')) {
+                    wrap.innerHTML = `<img src="${file.data}" style="max-width: 100%; max-height: 65vh; border-radius: 8px; object-fit: contain;" alt="${file.name}" />`;
+                } else if (file.type && file.type.startsWith('video/')) {
+                    wrap.innerHTML = `<video src="${file.data}" controls style="max-width: 100%; max-height: 65vh; border-radius: 8px;"></video>`;
+                } else {
+                    wrap.innerHTML = `<p>${file.name || 'ไฟล์มีเดีย'}</p>`;
+                }
+                display.appendChild(wrap);
+            });
+            if (mediaFiles[0]?.data && downloadBtn) {
+                downloadBtn.href = mediaFiles[0].data;
+                downloadBtn.download = mediaFiles[0].name || 'mars-media';
+                downloadBtn.style.display = 'inline-flex';
+            }
+        } else {
+            display.innerHTML = `<p style="color: var(--text-muted); text-align: center;">ไม่พบไฟล์ข้อมูลมีเดีย</p>`;
+            if (downloadBtn) downloadBtn.style.display = 'none';
+        }
+    } catch (e) {
+        display.innerHTML = `<img src="${item.content}" style="max-width: 100%; max-height: 65vh; border-radius: 8px;" />`;
+        if (downloadBtn) {
+            downloadBtn.href = item.content;
+            downloadBtn.download = item.name || 'mars-media.png';
+            downloadBtn.style.display = 'inline-flex';
+        }
+    }
+
+    appData.activeEditingId = item.id;
+    lightbox.classList.remove('hidden');
+    refreshIcons();
+}
+
+function openLightboxForData(name, data, type) {
+    const fakeItem = {
+        id: appData.activeEditingId,
+        name: name,
+        createdAt: new Date().toISOString(),
+        content: JSON.stringify([{ name, data, type }])
+    };
+    openLightbox(fakeItem);
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox-modal')?.classList.add('hidden');
+}
+
+function deleteLightboxMedia() {
+    if (appData.activeEditingId) {
+        deleteItemToTrash(appData.activeEditingId);
+        closeLightbox();
+    }
+}
+
+function shareLightboxMedia() {
+    const downloadBtn = document.getElementById('btn-lightbox-download');
+    if (downloadBtn && downloadBtn.href) {
+        if (navigator.share) {
+            navigator.share({
+                title: document.getElementById('lightbox-title').innerText,
+                url: downloadBtn.href
+            }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(downloadBtn.href);
+            showToast('คัดลอกลิงก์มีเดียลงคลิปบอร์ดแล้ว', 'success');
+        }
+    }
+}
+
+function shareActiveNote() {
+    const item = appData.items.find(i => i.id === appData.activeEditingId);
+    if (item) {
+        const textToShare = `หัวข้อ: ${item.name}\nรายละเอียด: ${item.content}`;
+        if (navigator.share) {
+            navigator.share({ title: item.name, text: textToShare }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(textToShare);
+            showToast('คัดลอกเนื้อหาโน้ตเรียบร้อย', 'success');
+        }
+    }
 }
 
 function closeFileModal() {
@@ -541,10 +696,6 @@ function handleFileSelect(event) {
         reader.readAsDataURL(file);
     }
     showToast(`เลือกไฟล์เรียบร้อยแล้ว (${files.length} ไฟล์)`, 'info');
-}
-
-function closeLightbox() {
-    document.getElementById('lightbox-modal')?.classList.add('hidden');
 }
 
 // App Entry Point
