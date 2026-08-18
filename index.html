@@ -19,9 +19,7 @@
 
     <canvas id="space-bg-canvas"></canvas>
     <div id="toast-container"></div>
-    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
-    <!-- Command Bar Overlay -->
     <div id="command-bar-overlay" class="command-overlay hidden">
         <div class="command-box">
             <div class="command-input-wrapper">
@@ -32,7 +30,6 @@
         </div>
     </div>
 
-    <!-- Login Screen -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card">
             <div class="brand-badge">
@@ -62,8 +59,9 @@
         </div>
     </div>
 
-    <!-- Main App Layout -->
     <div id="app-screen" class="app-layout hidden">
+
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
         <header class="mobile-navbar">
             <div class="mobile-brand">
@@ -133,7 +131,6 @@
 
             <div class="content-body">
 
-                <!-- Dashboard View -->
                 <div id="view-dashboard" class="tab-view">
                     <div class="stat-cards-grid">
                         <div class="stat-card card-cyan" onclick="navigateToFolder('root')">
@@ -183,7 +180,6 @@
                     </div>
                 </div>
 
-                <!-- Files View -->
                 <div id="view-files" class="tab-view hidden">
                     <div class="toolbar-bar">
                         <div class="search-field">
@@ -200,7 +196,6 @@
                     <div id="file-list" class="file-grid view-grid"></div>
                 </div>
 
-                <!-- Trash View -->
                 <div id="view-trash" class="tab-view hidden">
                     <div id="trash-list" class="trash-grid"></div>
                 </div>
@@ -209,7 +204,6 @@
         </main>
     </div>
 
-    <!-- Create Modal -->
     <div id="create-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
@@ -267,7 +261,6 @@
         </div>
     </div>
 
-    <!-- Lightbox Modal -->
     <div id="lightbox-modal" class="lightbox-overlay hidden">
         <div class="lightbox-container">
             <button class="btn-lightbox-close" type="button" onclick="closeLightbox()"><i data-lucide="x"></i></button>
@@ -294,7 +287,6 @@
         </div>
     </div>
 
-    <!-- File Edit Modal -->
     <div id="file-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">

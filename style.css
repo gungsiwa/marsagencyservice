@@ -60,11 +60,10 @@ body.sidebar-opened {
     gap: 10px;
 }
 
+/* เอา position: relative และ z-index ออกตรงนี้ ป้องกันการล็อค Stacking Context */
 .app-layout {
     display: flex;
     min-height: 100vh;
-    position: relative;
-    z-index: 2;
 }
 
 .hidden {
@@ -404,7 +403,7 @@ body.sidebar-opened {
 .btn-danger-outline { background: transparent; border: 1px solid #ef4444; color: #ef4444; }
 
 /* ====================================================
-   MOBILE RESPONSIVE & SIDEBAR LAYER FIX (CRITICAL)
+   MOBILE RESPONSIVE & SIDEBAR LAYER FIX
    ==================================================== */
 .sidebar-backdrop { display: none; }
 
@@ -431,7 +430,7 @@ body.sidebar-opened {
         padding: 6px;
     }
 
-    /* ฉากมืดเบลอ */
+    /* ฉากมืดเบลอ อยู่ระดับ 9998 */
     .sidebar-backdrop {
         display: block;
         position: fixed;
@@ -442,7 +441,7 @@ body.sidebar-opened {
         background: rgba(0, 0, 0, 0.75);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        z-index: 9998; /* อยู่ระดับ 9998 */
+        z-index: 9998;
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
@@ -455,7 +454,7 @@ body.sidebar-opened {
         pointer-events: auto;
     }
 
-    /* เมนู Sidebar ซ้ายมือ */
+    /* เมนู Sidebar อยู่ระดับ 9999 (ลอยเหนือฉากมืดแน่นอน) */
     .sidebar {
         position: fixed !important;
         top: 0 !important;
@@ -463,7 +462,7 @@ body.sidebar-opened {
         width: 280px !important;
         height: 100% !important;
         background-color: #0b0f19 !important;
-        z-index: 9999 !important; /* อยู่หน้าสุด 9999 เหนือฉากหลังแน่นอน */
+        z-index: 9999 !important;
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.9);
