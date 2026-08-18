@@ -162,7 +162,7 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 0 15px var(--accent-glow);
 }
 
-/* Mobile Navbar */
+/* Mobile Navigation Header */
 .mobile-navbar {
     display: none; align-items: center; justify-content: space-between;
     padding: 12px 16px; background: var(--sidebar-dark);
@@ -175,12 +175,19 @@ input:focus, select:focus, textarea:focus {
     color: white; padding: 8px; border-radius: var(--radius-sm); cursor: pointer;
 }
 .btn-close-sidebar { display: none; background: none; border: none; color: var(--text-muted); cursor: pointer; }
+
+/* Mobile Backdrop FIX */
 .sidebar-backdrop {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 998;
+    background: rgba(5, 7, 13, 0.8); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); z-index: 1000; opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.sidebar-backdrop.active {
+    display: block; opacity: 1;
 }
 
-/* App Layout */
+/* App Layout & Sidebar FIX */
 .app-layout { display: flex; min-height: 100vh; position: relative; z-index: 1; }
 .sidebar {
     width: 270px; background: var(--sidebar-dark);
@@ -329,7 +336,7 @@ input:focus, select:focus, textarea:focus {
 /* Lightbox Modal */
 .lightbox-overlay {
     position: fixed; inset: 0; background: rgba(5, 7, 13, 0.92); backdrop-filter: blur(12px);
-    z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 30px;
+    z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 30px;
 }
 .lightbox-container {
     display: flex; width: 100%; max-width: 1100px; height: 80vh;
@@ -374,7 +381,7 @@ input:focus, select:focus, textarea:focus {
 .badge-tag { position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.7); color: white; padding: 2px 4px; border-radius: 4px; }
 
 /* Modals Base */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1001; padding: 16px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 16px; }
 .modal-card { background: var(--card-dark); border: 1px solid var(--border-glow); border-radius: var(--radius-lg); width: 100%; max-width: 560px; max-height: 85vh; padding: 28px; display: flex; flex-direction: column; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .modal-body { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; padding-right: 4px; }
@@ -397,18 +404,22 @@ input:focus, select:focus, textarea:focus {
 /* Tag Badge */
 .tag-badge { font-size: 0.7rem; background: rgba(139, 92, 246, 0.2); color: var(--primary-purple); padding: 2px 6px; border-radius: 4px; margin-right: 4px; }
 
-/* Responsive Adjustments */
+/* Responsive Adjustments & Mobile Sidebar FIX */
 @media (max-width: 768px) {
     .mobile-navbar { display: flex; }
-    .btn-close-sidebar { display: block; }
+    .btn-close-sidebar { display: flex; align-items: center; justify-content: center; }
     .dashboard-widgets-grid { grid-template-columns: 1fr; }
 
+    /* ปรับ Sidebar บนมือถือให้มี z-index สูงกว่า Backdrop */
     .sidebar {
-        position: fixed; top: 0; left: -290px; height: 100vh; width: 280px;
-        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        position: fixed; top: 0; left: -300px; height: 100vh; width: 280px;
+        z-index: 1001 !important; visibility: hidden;
+        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.7);
     }
-    .sidebar.open { left: 0; }
-    .sidebar-backdrop.active { display: block; }
+    .sidebar.open {
+        left: 0 !important; visibility: visible !important;
+    }
 
     .topbar { padding: 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
     .topbar-right { width: 100%; display: flex; justify-content: space-between; align-items: center; }

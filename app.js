@@ -157,7 +157,7 @@ function toggleCommandBar() {
     }
 }
 
-// Mobile Sidebar
+// Mobile Sidebar Logic FIX (ป้องกันการค้างเรียบร้อย)
 function initMobileSidebar() {
     const toggleBtn = document.getElementById('btn-toggle-sidebar');
     const closeBtn = document.getElementById('btn-close-sidebar');
@@ -165,19 +165,35 @@ function initMobileSidebar() {
     const backdrop = document.getElementById('sidebar-backdrop');
 
     function openSidebar() {
-        sidebar?.classList.add('open'); backdrop?.classList.add('active');
-    }
-    function closeSidebar() {
-        sidebar?.classList.remove('open'); backdrop?.classList.remove('active');
+        playUISound('click');
+        sidebar?.classList.add('open');
+        backdrop?.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
-    toggleBtn?.addEventListener('click', () => { playUISound('click'); openSidebar(); });
-    closeBtn?.addEventListener('click', () => { playUISound('click'); closeSidebar(); });
+    function closeSidebar() {
+        sidebar?.classList.remove('open');
+        backdrop?.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    toggleBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSidebar();
+    });
+
+    closeBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeSidebar();
+    });
+
     backdrop?.addEventListener('click', closeSidebar);
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
         item.addEventListener('click', () => {
-            if (window.innerWidth <= 768) closeSidebar();
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
         });
     });
 }
@@ -369,7 +385,7 @@ createTypeSelect?.addEventListener('change', (e) => {
         if (mediaLabel) mediaLabel.innerText = 'อัปโหลดสื่อจากเครื่อง (เลือกภาพ/วิดีโอได้หลายไฟล์)';
         if (contentLabel) contentLabel.innerText = 'คำอธิบายภาพ/วิดีโอ (Caption)';
     } else if (type === 'note') {
-        mediaGroup.classList.remove('hidden'); // แนบสื่อในโน้ตได้!
+        mediaGroup.classList.remove('hidden');
         if (mediaLabel) mediaLabel.innerText = 'แนบภาพ/วิดีโอประกอบโน้ต (Optional)';
         if (contentLabel) contentLabel.innerText = 'รายละเอียด / เนื้อหาโน้ต';
     } else if (type === 'folder') {
