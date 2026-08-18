@@ -423,11 +423,28 @@ function openItemDetail(itemId) {
     const item = appData.items.find(i => i.id === itemId);
     if (!item) return;
 
+    // ถ้าเป็นโฟลเดอร์ ให้กดเข้าไปข้างในโฟลเดอร์
     if (item.type === 'folder') {
         navigateToFolder(item.id);
         return;
     }
 
+    // ถ้าเป็นลิงก์ (link) ให้เปิดเว็บไซต์ปลายทางทันทีในแท็บใหม่
+    if (item.type === 'link') {
+        if (item.content) {
+            let targetUrl = item.content.trim();
+            // ถ้าลิงก์ไม่ได้ขึ้นต้นด้วย http ให้เติม https:// ให้
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                targetUrl = 'https://' + targetUrl;
+            }
+            window.open(targetUrl, '_blank');
+        } else {
+            showToast('ลิงก์นี้ยังไม่มี URL ปลายทาง', 'error');
+        }
+        return;
+    }
+
+    // สำหรับประเภทอื่นๆ (เช่น โน้ต) ให้เปิดหน้าต่าง Modal แก้ไขข้อมูลตามปกติ
     appData.activeEditingId = itemId;
     document.getElementById('modal-title').innerText = item.name;
     document.getElementById('modal-file-content').value = item.content || '';
