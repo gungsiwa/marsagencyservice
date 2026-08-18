@@ -178,7 +178,7 @@ function setTileView(mode) {
     }
 }
 
-// Data Handling & Sync (เพิ่ม LocalStorage Fallback คู่กับ Cloud)
+// Data Handling & Sync
 function initDefaultFolders() {
     const defaultFolders = [
         { id: 'folder_notes', name: '📝 โน้ตบันทึก', type: 'folder', parentId: 'root', isDefault: true },
@@ -194,7 +194,6 @@ function initDefaultFolders() {
 async function loadDataFromCloud() {
     let loaded = false;
     
-    // 1. พยายามดึงจาก Supabase ก่อน
     if (supabaseClient) {
         try {
             const { data, error } = await supabaseClient.from('mars_data').select('*').eq('key', 'mars_app_state').maybeSingle();
@@ -209,7 +208,6 @@ async function loadDataFromCloud() {
         }
     }
     
-    // 2. ถ้าดึงจาก Cloud ไม่ได้ ให้ดึงจาก LocalStorage สำรอง
     if (!loaded) {
         const localSave = localStorage.getItem('mars_app_state_backup');
         if (localSave) {
@@ -233,7 +231,6 @@ async function loadDataFromCloud() {
 }
 
 async function syncToCloud() {
-    // 1. บันทึกลง LocalStorage ทันที (การันตีว่าเปิดใหม่ข้อมูลไม่หายแน่นอน)
     const statePayload = {
         items: appData.items,
         scratchpad: appData.quickScratchpad,
@@ -241,14 +238,16 @@ async function syncToCloud() {
     };
     localStorage.setItem('mars_app_state_backup', JSON.stringify(statePayload));
 
-    // 2. ส่งขึ้น Cloud Supabase
     if (supabaseClient) {
         try {
             const { error } = await supabaseClient.from('mars_data').upsert({
                 key: 'mars_app_state',
                 value: statePayload
-            });
-            if (error) console.error("Supabase Sync Error:", error);
+            }, { onConflict: 'key' });
+            
+            if (error) {
+                console.error("Supabase Sync Error:", error);
+            }
         } catch (err) {
             console.warn("Cloud sync exception:", err);
         }
@@ -413,7 +412,6 @@ async function submitCreateItem() {
     appData.items.push(newItem);
     addLog(`สร้าง ${type}: ${title}`);
     
-    // บันทึกลงทั้ง Local + Supabase ทันที
     await syncToCloud();
     
     closeCreateModal();
