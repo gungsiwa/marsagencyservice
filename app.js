@@ -171,14 +171,14 @@ function setTileView(mode) {
         container?.classList.remove('view-list');
         container?.classList.add('view-grid');
     } else {
-        btnList?.classList.add('active');
-        btnGrid?.classList.remove('active');
+        btnList?.classList.remove('active');
+        btnGrid?.classList.add('active');
         container?.classList.remove('view-grid');
         container?.classList.add('view-list');
     }
 }
 
-// Data Handling & Sync
+// Data Handling & Sync (เพิ่ม LocalStorage Fallback คู่กับ Cloud)
 function initDefaultFolders() {
     const defaultFolders = [
         { id: 'folder_notes', name: '📝 โน้ตบันทึก', type: 'folder', parentId: 'root', isDefault: true },
@@ -192,19 +192,38 @@ function initDefaultFolders() {
 }
 
 async function loadDataFromCloud() {
+    let loaded = false;
+    
+    // 1. พยายามดึงจาก Supabase ก่อน
     if (supabaseClient) {
         try {
-            const { data } = await supabaseClient.from('mars_data').select('*').eq('key', 'mars_app_state').maybeSingle();
-            if (data && data.value) {
+            const { data, error } = await supabaseClient.from('mars_data').select('*').eq('key', 'mars_app_state').maybeSingle();
+            if (!error && data && data.value) {
                 appData.items = data.value.items || [];
                 appData.quickScratchpad = data.value.scratchpad || '';
                 appData.activities = data.value.activities || [];
+                loaded = true;
             }
         } catch (err) {
             console.warn("Cloud load fallback to local:", err);
         }
     }
     
+    // 2. ถ้าดึงจาก Cloud ไม่ได้ ให้ดึงจาก LocalStorage สำรอง
+    if (!loaded) {
+        const localSave = localStorage.getItem('mars_app_state_backup');
+        if (localSave) {
+            try {
+                const parsed = JSON.parse(localSave);
+                appData.items = parsed.items || [];
+                appData.quickScratchpad = parsed.scratchpad || '';
+                appData.activities = parsed.activities || [];
+            } catch (e) {
+                console.error("Local backup parse error", e);
+            }
+        }
+    }
+
     initDefaultFolders();
     const pad = document.getElementById('quick-scratchpad');
     if (pad) pad.value = appData.quickScratchpad;
@@ -214,18 +233,25 @@ async function loadDataFromCloud() {
 }
 
 async function syncToCloud() {
-    if (!supabaseClient) return;
-    try {
-        await supabaseClient.from('mars_data').upsert({
-            key: 'mars_app_state',
-            value: {
-                items: appData.items,
-                scratchpad: appData.quickScratchpad,
-                activities: appData.activities
-            }
-        });
-    } catch (err) {
-        console.warn("Cloud sync error:", err);
+    // 1. บันทึกลง LocalStorage ทันที (การันตีว่าเปิดใหม่ข้อมูลไม่หายแน่นอน)
+    const statePayload = {
+        items: appData.items,
+        scratchpad: appData.quickScratchpad,
+        activities: appData.activities
+    };
+    localStorage.setItem('mars_app_state_backup', JSON.stringify(statePayload));
+
+    // 2. ส่งขึ้น Cloud Supabase
+    if (supabaseClient) {
+        try {
+            const { error } = await supabaseClient.from('mars_data').upsert({
+                key: 'mars_app_state',
+                value: statePayload
+            });
+            if (error) console.error("Supabase Sync Error:", error);
+        } catch (err) {
+            console.warn("Cloud sync exception:", err);
+        }
     }
 }
 
@@ -270,9 +296,14 @@ function renderApp() {
                 
                 card.innerHTML = `
                     <div class="card-info" onclick="openItemDetail('${item.id}')">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="${icon}" style="color: var(--primary-cyan);"></i>
-                            <div class="card-title" style="font-weight: 600;">${item.name}</div>
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i data-lucide="${icon}" style="color: var(--primary-cyan);"></i>
+                                <div class="card-title" style="font-weight: 600;">${item.name}</div>
+                            </div>
+                            <button class="btn btn-sm btn-danger-outline" onclick="event.stopPropagation(); deleteItemToTrash('${item.id}')" title="ย้ายไปถังขยะ">
+                                <i data-lucide="trash-2"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -281,6 +312,17 @@ function renderApp() {
         }
     }
     refreshIcons();
+}
+
+async function deleteItemToTrash(id) {
+    const item = appData.items.find(i => i.id === id);
+    if (item) {
+        item.isDeleted = true;
+        addLog(`ย้ายไปถังขยะ: ${item.name}`);
+        await syncToCloud();
+        renderApp();
+        showToast('ย้ายรายการไปถังขยะเรียบร้อย', 'info');
+    }
 }
 
 function renderTrash() {
@@ -370,6 +412,8 @@ async function submitCreateItem() {
 
     appData.items.push(newItem);
     addLog(`สร้าง ${type}: ${title}`);
+    
+    // บันทึกลงทั้ง Local + Supabase ทันที
     await syncToCloud();
     
     closeCreateModal();
@@ -416,6 +460,7 @@ async function restoreItem(id) {
         addLog(`คืนค่า: ${item.name}`);
         await syncToCloud();
         renderTrash();
+        renderApp();
         showToast('คืนค่ารายการเรียบร้อย', 'success');
     }
 }
@@ -425,6 +470,7 @@ async function permanentlyDeleteItem(id) {
     addLog(`ลบถาวรไอเทม`);
     await syncToCloud();
     renderTrash();
+    renderApp();
     showToast('ลบรายการถาวรแล้ว', 'success');
 }
 
