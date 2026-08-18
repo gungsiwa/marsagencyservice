@@ -3,337 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mars Cloud System - Space Fleet Command v3.0</title>
+    <title>Mars Cloud System - Space Fleet Edition</title>
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- CSS Style -->
     <link rel="stylesheet" href="style.css">
-    <!-- Supabase JS Client Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- External Libraries (โหลดแบบ defer ป้องกันการค้างบนมือถือ) -->
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="app.js" defer></script>
 </head>
 <body>
 
-    <!-- Dynamic Particle Space Canvas Background -->
+    <!-- Canvas แสดง Effect พื้นหลัง -->
     <canvas id="space-bg-canvas"></canvas>
 
     <!-- Toast Notification Container -->
     <div id="toast-container"></div>
 
+    <!-- ฉากหลังสีดำเบลอ สำหรับ Mobile Sidebar (วางไว้ตรงนี้เพื่อไม่ให้ทับซ้อนเมนู) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
     <!-- Spotlight Command Bar Overlay (Ctrl + K) -->
     <div id="command-bar-overlay" class="command-overlay hidden">
         <div class="command-box">
             <div class="command-input-wrapper">
-                <i data-lucide="terminal"></i>
-                <input type="text" id="command-input" placeholder="พิมพ์คำสั่งค้นหา หรือชื่อไฟล์... (กด Esc เพื่อปิด)" autocomplete="off">
+                <i data-lucide="search"></i>
+                <input type="text" id="command-input" placeholder="พิมพ์ชื่อไฟล์, โน้ต หรือแท็กเพื่อค้นหาอย่างรวดเร็ว..." />
             </div>
             <div id="command-results" class="command-results-list"></div>
         </div>
     </div>
 
-    <!-- Mobile Navigation Bar -->
-    <header class="mobile-navbar">
-        <div class="mobile-brand">
-            <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
-            <span class="mobile-brand-title">MARS DMS</span>
-        </div>
-        <button id="btn-toggle-sidebar" class="btn-icon-menu">
-            <i data-lucide="menu"></i>
-        </button>
-    </header>
-
-    <!-- Backdrop for mobile drawer -->
-    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
-
-    <!-- 1. Login Screen -->
+    <!-- 1. หน้าจอ Login -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card">
             <div class="brand-badge">
-                <i data-lucide="orbit" class="spin-slow"></i>
+                <i data-lucide="rocket"></i>
             </div>
             <h2>MARS CLOUD SYSTEM</h2>
-            <p class="subtitle">ระบบจัดการคลังข้อมูลและสื่อมัลติมีเดีย</p>
+            <p class="subtitle">ระบบจัดการฐานข้อมูลและคลังสื่อสารองค์กร</p>
             
             <form id="login-form">
-                <div class="form-group">
-                    <label>ชื่อผู้ใช้งาน</label>
+                <div class="form-group mb-2">
                     <div class="input-glow">
                         <i data-lucide="user"></i>
-                        <input type="text" id="login-username" placeholder="Username" required>
+                        <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน (Username)" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>รหัสผ่าน</label>
+                <div class="form-group mb-2">
                     <div class="input-glow">
                         <i data-lucide="lock"></i>
-                        <input type="password" id="login-password" placeholder="Password" required>
+                        <input type="password" id="login-password" placeholder="รหัสผ่าน (Password)" required>
                     </div>
                 </div>
-                <div id="login-error" class="error-msg hidden">
-                    <i data-lucide="alert-triangle"></i> ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!
-                </div>
-                <button type="submit" class="btn btn-primary btn-glow btn-block">
-                    <i data-lucide="log-in"></i> เข้าสู่ระบบ
+                <button type="submit" class="btn btn-primary btn-block btn-glow">
+                    เข้าสู่ระบบ <i data-lucide="arrow-right"></i>
                 </button>
             </form>
+            <p id="login-error" class="error-msg hidden">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!</p>
         </div>
     </div>
 
-    <!-- 2. Main App Screen -->
+    <!-- 2. หน้าหลัก (Main Application Layout) -->
     <div id="app-screen" class="app-layout hidden">
-        
-        <!-- Sidebar -->
-        <aside class="sidebar" id="main-sidebar">
+
+        <!-- Header บนมือถือ (ปุ่ม 3 ขีด) -->
+        <header class="mobile-navbar">
+            <div class="mobile-brand">
+                <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
+                <span class="mobile-brand-title">MARS DMS</span>
+            </div>
+            <button id="btn-toggle-sidebar" class="btn-icon-menu">
+                <i data-lucide="menu"></i>
+            </button>
+        </header>
+
+        <!-- แถบ Sidebar ด้านซ้าย -->
+        <aside id="main-sidebar" class="sidebar">
             <div class="sidebar-brand">
                 <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
                 <div class="brand-title">
                     <h2>MARS DMS</h2>
-                    <span class="version-tag">v3.0 COMMAND</span>
+                    <span class="version-tag">Space Fleet v3.0</span>
                 </div>
-                <button id="btn-close-sidebar" class="btn-close-sidebar"><i data-lucide="x"></i></button>
+                <button id="btn-close-sidebar" class="btn-close-sidebar">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-            
+
             <div class="user-profile-box">
                 <div class="user-avatar"><i data-lucide="shield-check"></i></div>
                 <div class="user-details">
-                    <span class="user-name" id="display-user">Administrator</span>
+                    <span class="user-name">Admin Commander</span>
                     <span class="user-status"><span class="pulse-dot"></span> Online</span>
                 </div>
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
-                    <i data-lucide="layout-grid"></i> ภาพรวมระบบ
+                <a href="#" id="nav-dashboard" class="nav-item active" onclick="switchTab('dashboard', 'nav-dashboard')">
+                    <i data-lucide="layout-dashboard"></i> ภาพรวมระบบ (Dashboard)
                 </a>
-                <a href="#" class="nav-item" id="nav-files" onclick="navigateToFolder('root')">
-                    <i data-lucide="folder-git-2"></i> จัดการเอกสาร/ไฟล์
+                <a href="#" id="nav-files" class="nav-item" onclick="navigateToFolder('root')">
+                    <i data-lucide="folder-kanban"></i> คลังไฟล์ทั้งหมด
                 </a>
-                <a href="#" class="nav-item" id="nav-media" onclick="navigateToFolder('folder_media')">
-                    <i data-lucide="film"></i> คลังภาพและวิดีโอ
+                <a href="#" id="nav-media" class="nav-item" onclick="navigateToFolder('folder_media')">
+                    <i data-lucide="image"></i> ภาพและวิดีโอ
                 </a>
-                <a href="#" class="nav-item" id="nav-trash" onclick="switchTab('trash')">
-                    <i data-lucide="trash-2"></i> ถังขยะ
+                <a href="#" id="nav-trash" class="nav-item" onclick="switchTab('trash', 'nav-trash')">
+                    <i data-lucide="trash-2"></i> ถังขยะ (<span id="trash-count">0</span>)
                 </a>
             </nav>
 
-            <div class="sidebar-footer">
-                <button id="btn-command-shortcut" class="btn btn-ghost btn-block mb-2" onclick="toggleCommandBar()">
-                    <i data-lucide="command"></i> ค้นหาด่วน (Ctrl+K)
-                </button>
-                <button id="btn-logout" class="btn btn-danger-outline btn-block">
-                    <i data-lucide="log-out"></i> ออกจากระบบ
-                </button>
-            </div>
+            <button id="btn-logout" class="btn btn-danger-outline btn-block mt-auto">
+                <i data-lucide="log-out"></i> ออกจากระบบ
+            </button>
         </aside>
 
-        <!-- Main Workspace -->
-        <div class="main-wrapper" id="global-drop-zone">
-            <header class="topbar">
+        <!-- พื้นที่แสดงเนื้อหาหลัก -->
+        <main class="main-wrapper" id="global-drop-zone">
+            
+            <div class="topbar">
                 <div class="topbar-left">
-                    <h3 id="page-title">ภาพรวมระบบ</h3>
+                    <h1 id="page-title">ภาพรวมระบบ Command Center</h1>
+                    <div id="breadcrumb" class="breadcrumb-container"></div>
                 </div>
                 <div class="topbar-right">
-                    <div id="sync-status" class="status-badge"></div>
-                    <div class="clock-badge">
-                        <i data-lucide="clock"></i>
-                        <span id="current-clock"></span>
-                    </div>
+                    <div class="clock-badge"><i data-lucide="clock"></i> <span id="current-clock">--:--:--</span></div>
+                    <div id="sync-status" class="status-badge online"><i data-lucide="wifi"></i> Connected</div>
+                    <button id="btn-open-create-modal" class="btn btn-cyan btn-glow">
+                        <i data-lucide="plus-circle"></i> สร้างรายการใหม่
+                    </button>
                 </div>
-            </header>
+            </div>
 
-            <main class="content-body">
-                
-                <!-- View 1: Dashboard Space Command -->
-                <section id="view-dashboard" class="tab-view">
+            <div class="content-body">
+
+                <!-- VIEW 1: Dashboard View -->
+                <div id="view-dashboard" class="tab-view">
                     <div class="stat-cards-grid">
-                        <div class="stat-card card-cyan clickable" onclick="navigateToFolder('root')">
+                        <div class="stat-card card-cyan" onclick="navigateToFolder('root')">
                             <div class="stat-header">
+                                <span class="stat-title">ไฟล์ทั้งหมด</span>
                                 <div class="stat-icon"><i data-lucide="files"></i></div>
-                                <span class="stat-trend">ทั้งหมด</span>
                             </div>
                             <div class="stat-num" id="stat-total">0</div>
-                            <div class="stat-title">รายการจัดเก็บทั้งหมด</div>
                         </div>
-
-                        <div class="stat-card card-purple clickable" onclick="navigateToFolder('folder_notes')">
+                        <div class="stat-card card-purple" onclick="navigateToFolder('folder_notes')">
                             <div class="stat-header">
+                                <span class="stat-title">โน้ตข้อความ</span>
                                 <div class="stat-icon"><i data-lucide="file-text"></i></div>
-                                <span class="stat-trend">Notes</span>
                             </div>
                             <div class="stat-num" id="stat-notes">0</div>
-                            <div class="stat-title">โน้ตและเอกสารบันทึก</div>
                         </div>
-
-                        <div class="stat-card card-pink clickable" onclick="navigateToFolder('folder_media')">
+                        <div class="stat-card card-pink" onclick="navigateToFolder('folder_media')">
                             <div class="stat-header">
-                                <div class="stat-icon"><i data-lucide="image"></i></div>
-                                <span class="stat-trend">Media</span>
+                                <span class="stat-title">คลังรูป/วิดีโอ</span>
+                                <div class="stat-icon"><i data-lucide="film"></i></div>
                             </div>
                             <div class="stat-num" id="stat-media">0</div>
-                            <div class="stat-title">คลังรูปภาพและวิดีโอ</div>
                         </div>
-
-                        <div class="stat-card card-orange clickable" onclick="navigateToFolder('folder_links')">
+                        <div class="stat-card card-orange" onclick="navigateToFolder('folder_links')">
                             <div class="stat-header">
-                                <div class="stat-icon"><i data-lucide="link-2"></i></div>
-                                <span class="stat-trend">Links</span>
+                                <span class="stat-title">ลิงก์เว็บ</span>
+                                <div class="stat-icon"><i data-lucide="link"></i></div>
                             </div>
                             <div class="stat-num" id="stat-links">0</div>
-                            <div class="stat-title">คลังลิงก์ภายนอก</div>
                         </div>
                     </div>
 
-                    <!-- Scratchpad & Recent Activity Workspace -->
                     <div class="dashboard-widgets-grid">
                         <div class="widget-box">
                             <div class="widget-header">
                                 <h4><i data-lucide="edit-3"></i> Quick Scratchpad (บันทึกด่วน)</h4>
-                                <button class="btn btn-sm btn-ghost" onclick="saveScratchpad()"><i data-lucide="save"></i> บันทึกด่วน</button>
+                                <button class="btn btn-sm btn-ghost" onclick="saveScratchpad()"><i data-lucide="save"></i> บันทึก</button>
                             </div>
-                            <textarea id="quick-scratchpad" placeholder="พิมพ์ข้อความ ไอเดีย หรือจดบันทึกด่วนตรงนี้ ข้อความจะถูกเซฟอัตโนมัติ..."></textarea>
+                            <textarea id="quick-scratchpad" placeholder="พิมพ์ข้อความบันทึกชั่วคราวที่นี่..."></textarea>
                         </div>
-
                         <div class="widget-box">
                             <div class="widget-header">
-                                <h4><i data-lucide="activity"></i> ประวัติกิจกรรมล่าสุด</h4>
+                                <h4><i data-lucide="activity"></i> ประวัติกิจกรรมล่าสุด (System Logs)</h4>
                             </div>
                             <div id="recent-activity-list" class="activity-timeline"></div>
                         </div>
                     </div>
-                </section>
+                </div>
 
-                <!-- View 2: File & Media Manager -->
-                <section id="view-files" class="tab-view hidden">
+                <!-- VIEW 2: Files View -->
+                <div id="view-files" class="tab-view hidden">
                     <div class="toolbar-bar">
                         <div class="search-field">
                             <i data-lucide="search"></i>
-                            <input type="text" id="search-input" placeholder="ค้นหาชื่อไฟล์, โน้ต, แท็ก หรือคำอธิบายภาพ..." />
+                            <input type="text" id="search-input" placeholder="ค้นหาชื่อไฟล์, คำอธิบาย หรือแท็ก..." />
                         </div>
                         <div class="view-controls">
                             <div class="view-switcher-toggle">
-                                <button id="btn-view-grid" class="btn-toggle active" title="มุมมองการ์ด (Grid View)"><i data-lucide="grid"></i></button>
-                                <button id="btn-view-list" class="btn-toggle" title="มุมมองรายการแนวนอน (List View)"><i data-lucide="list"></i></button>
+                                <button id="btn-view-grid" class="btn-toggle active"><i data-lucide="grid"></i></button>
+                                <button id="btn-view-list" class="btn-toggle"><i data-lucide="list"></i></button>
                             </div>
-                            <button id="btn-open-create-modal" class="btn btn-primary btn-glow">
-                                <i data-lucide="plus-circle"></i> สร้าง/เพิ่มรายการ
-                            </button>
                         </div>
                     </div>
-
-                    <nav id="breadcrumb" class="breadcrumb-container"></nav>
-                    
-                    <!-- File & Media Containers -->
                     <div id="file-list" class="file-grid view-grid"></div>
-                </section>
+                </div>
 
-                <!-- View 3: Trash Bin -->
-                <section id="view-trash" class="tab-view hidden">
-                    <div class="section-title">
-                        <h3><i data-lucide="trash-2"></i> ถังขยะระบบ (<span id="trash-count">0</span>)</h3>
-                    </div>
+                <!-- VIEW 3: Trash View -->
+                <div id="view-trash" class="tab-view hidden">
                     <div id="trash-list" class="trash-grid"></div>
-                </section>
+                </div>
 
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
-    <!-- 3. Modal สร้าง/เพิ่มรายการ -->
+    <!-- 3. Modal สร้าง/เพิ่มข้อมูล -->
     <div id="create-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
-                <h3><i data-lucide="plus-square"></i> เพิ่มรายการ / อัปโหลดสื่อใหม่</h3>
+                <h3><i data-lucide="plus-square"></i> สร้างรายการใหม่</h3>
                 <button id="btn-close-create-modal" class="btn-close"><i data-lucide="x"></i></button>
             </div>
-
             <div class="modal-body">
-                <div class="form-row">
-                    <div class="form-group flex-1">
-                        <label>ประเภทรายการ</label>
-                        <select id="create-type">
-                            <option value="note">📝 โน้ตบันทึก (Note)</option>
-                            <option value="media">🖼️ สื่อมัลติมีเดีย (Image/Video)</option>
-                            <option value="folder">📁 โฟลเดอร์ (Folder)</option>
-                            <option value="link">🔗 คลังลิงก์ (Link)</option>
-                        </select>
-                    </div>
-                    <div class="form-group flex-1">
-                        <label>พื้นที่จัดเก็บ</label>
-                        <select id="create-parent"></select>
-                    </div>
+                <div class="form-group">
+                    <label>ประเภทรายการ:</label>
+                    <select id="create-type">
+                        <option value="note">📝 โน้ตข้อความ</option>
+                        <option value="media">🖼️ ภาพ / วิดีโอ</option>
+                        <option value="link">🔗 ลิงก์เว็บไซต์</option>
+                        <option value="folder">📁 โฟลเดอร์ใหม่</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label>ชื่อหัวข้อ / ชื่อสื่อ <span class="req">*</span></label>
-                    <input type="text" id="create-title" placeholder="ระบุชื่อเรียก..." required>
+                    <label>ตำแหน่งจัดเก็บ:</label>
+                    <select id="create-parent"></select>
                 </div>
 
                 <div class="form-group">
-                    <label>แท็กหมวดหมู่ (คั่นด้วยจุลภาค เช่น #สำคัญ, #งานด่วน)</label>
-                    <input type="text" id="create-tags" placeholder="#ด่วน, #อัปเดต">
+                    <label>หัวข้อ / ชื่อไฟล์:</label>
+                    <input type="text" id="create-title" placeholder="เช่น รายงานประจำวัน, ภาพกิจกรรม" />
                 </div>
 
-                <div class="form-group hidden" id="link-input-group">
-                    <label>URL ลิงก์ปลายทาง</label>
-                    <input type="url" id="create-link-url" placeholder="https://example.com">
+                <div class="form-group">
+                    <label>แท็ก (ใส่เครื่องหมายจุลภาค , คั่น):</label>
+                    <input type="text" id="create-tags" placeholder="เช่น สำคัญ, งาน, ด่วน" />
                 </div>
 
-                <!-- Input Zone สำหรับ Media Multi-Upload และ Note Media Attachment -->
-                <div class="form-group hidden" id="media-upload-group">
-                    <label id="media-upload-label">อัปโหลดสื่อจากเครื่อง (เลือกภาพ/วิดีโอได้หลายไฟล์)</label>
-                    <div class="drop-zone" id="drop-zone">
-                        <i data-lucide="upload-cloud"></i>
+                <div class="form-group">
+                    <label>⏰ ตั้งเวลาแจ้งเตือน (Optional):</label>
+                    <input type="datetime-local" id="create-reminder-time" />
+                </div>
+
+                <div id="link-input-group" class="form-group hidden">
+                    <label>URL ลิงก์:</label>
+                    <input type="url" id="create-link-url" placeholder="https://example.com" />
+                </div>
+
+                <div id="media-upload-group" class="form-group hidden">
+                    <label id="media-upload-label">เลือกไฟล์ภาพ / วิดีโอ:</label>
+                    <div id="drop-zone" class="drop-zone">
+                        <i data-lucide="upload-cloud" style="width: 36px; height: 36px; color: var(--primary-cyan);"></i>
                         <p>คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
-                        <input type="file" id="media-files-input" accept="image/*,video/*" multiple hidden>
+                        <input type="file" id="media-files-input" multiple accept="image/*,video/*" class="hidden" />
                     </div>
                     <div id="media-previews-container" class="media-upload-previews"></div>
                 </div>
 
-                <div class="form-group" id="content-input-group">
-                    <label id="content-label">รายละเอียด / รายละเอียดคำอธิบายสื่อ (Caption)</label>
-                    <textarea id="create-content" rows="4" placeholder="พิมพ์รายละเอียดข้อความ หรืออธิบายสื่อที่นี่..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>⏰ ตั้งเวลาแจ้งเตือน (Optional)</label>
-                    <input type="datetime-local" id="create-reminder-time">
+                <div id="content-input-group" class="form-group">
+                    <label id="content-label">รายละเอียด / เนื้อหา:</label>
+                    <textarea id="create-content" rows="4" placeholder="พิมพ์รายละเอียดที่ต้องการบันทึก..."></textarea>
                 </div>
             </div>
-
             <div class="modal-footer">
-                <button type="button" id="btn-close-modal-cancel" class="btn btn-ghost">ยกเลิก</button>
-                <button type="button" id="btn-submit-create" class="btn btn-primary">
-                    <i data-lucide="check"></i> บันทึกข้อมูล
-                </button>
+                <button id="btn-close-modal-cancel" class="btn btn-ghost">ยกเลิก</button>
+                <button id="btn-submit-create" class="btn btn-primary"><i data-lucide="check"></i> บันทึกข้อมูล</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. Fullscreen Media Viewer Lightbox -->
+    <!-- 4. Lightbox Modal แสดงสื่อ -->
     <div id="lightbox-modal" class="lightbox-overlay hidden">
         <div class="lightbox-container">
             <button class="btn-lightbox-close" onclick="closeLightbox()"><i data-lucide="x"></i></button>
-            
-            <div class="lightbox-content">
-                <div id="lightbox-media-display" class="lightbox-media"></div>
-            </div>
-
+            <div id="lightbox-media-display" class="lightbox-content"></div>
             <div class="lightbox-sidebar">
-                <h3 id="lightbox-title">Media Title</h3>
+                <h3 id="lightbox-title">สื่อมีเดีย</h3>
                 <span id="lightbox-date" class="lightbox-meta"></span>
-                
                 <div class="lightbox-caption-box">
-                    <label><i data-lucide="align-left"></i> คำอธิบายสื่อ (Caption):</label>
-                    <p id="lightbox-caption">ไม่มีคำอธิบาย</p>
+                    <label><i data-lucide="align-left"></i> คำอธิบาย</label>
+                    <p id="lightbox-caption">ไม่มีคำอธิบายเพิ่มเติม</p>
                 </div>
-
                 <div class="lightbox-actions">
-                    <a id="btn-lightbox-download" class="btn btn-cyan btn-block" download>
-                        <i data-lucide="download"></i> ดาวน์โหลดลงเครื่อง
+                    <a id="btn-lightbox-download" class="btn btn-primary btn-block" download>
+                        <i data-lucide="download"></i> ดาวน์โหลดไฟล์
                     </a>
-                    <button id="btn-lightbox-share" class="btn btn-purple btn-block">
+                    <button id="btn-lightbox-share" class="btn btn-ghost btn-block mb-2">
                         <i data-lucide="share-2"></i> แชร์ / คัดลอกลิงก์
                     </button>
                     <button id="btn-lightbox-delete" class="btn btn-danger-outline btn-block">
@@ -344,7 +312,7 @@
         </div>
     </div>
 
-    <!-- 5. Modal สำหรับอ่าน/แก้ไขไฟล์ Note พร้อม Media Viewer & Share -->
+    <!-- 5. Modal สำหรับอ่าน/แก้ไขไฟล์ Note -->
     <div id="file-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
@@ -358,7 +326,6 @@
                     <input type="datetime-local" id="modal-reminder-time" />
                 </div>
 
-                <!-- แทรกรูปภาพ/วิดีโอใน Note -->
                 <div id="modal-note-media-display" class="note-embedded-media-box hidden"></div>
 
                 <div class="form-group">
@@ -368,16 +335,11 @@
             </div>
             
             <div class="modal-footer">
-                <button id="btn-share-note" class="btn btn-ghost" onclick="shareActiveNote()">
-                    <i data-lucide="share-2"></i> แชร์โน้ตนี้
-                </button>
-                <button id="btn-save-file" class="btn btn-primary">
-                    <i data-lucide="save"></i> บันทึกการแก้ไข
-                </button>
+                <button onclick="shareActiveNote()" class="btn btn-ghost"><i data-lucide="share-2"></i> แชร์</button>
+                <button id="btn-save-file" class="btn btn-primary"><i data-lucide="save"></i> บันทึกการแก้ไข</button>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
 </body>
 </html>
