@@ -381,7 +381,7 @@ function toggleCreateFields() {
 
     if (type === 'note') {
         contentGroup?.classList.remove('hidden');
-        mediaGroup?.classList.remove('hidden'); // โน้ตสามารถแนบไฟล์มีเดียได้ด้วย
+        mediaGroup?.classList.remove('hidden');
     } else if (type === 'folder') {
         contentGroup?.classList.remove('hidden');
     } else if (type === 'link') {
@@ -417,7 +417,6 @@ async function submitCreateItem() {
         content = JSON.stringify(mediaData);
     } else if (type === 'note') {
         const textContent = document.getElementById('create-content')?.value || '';
-        // เก็บทั้งข้อความและไฟล์มีเดียที่แนบมากับโน้ตในโครงสร้างเดียวกัน
         content = JSON.stringify({
             text: textContent,
             media: mediaData
@@ -481,7 +480,7 @@ function openItemDetail(itemId) {
         return;
     }
 
-    // เปิดหน้าต่างรายละเอียดโน้ต (Note Detail Modal) ทันที
+    // เปิดหน้าต่างรายละเอียดโน้ต (Note View Mode)
     appData.activeEditingId = itemId;
     document.getElementById('modal-title').innerText = item.name;
     
@@ -489,7 +488,6 @@ function openItemDetail(itemId) {
     let textValue = rawContent;
     let mediaList = [];
 
-    // ตรวจสอบรูปแบบโครงสร้างข้อมูลโน้ต (JSON หรือข้อความธรรมดา)
     try {
         const parsed = JSON.parse(rawContent);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -503,12 +501,31 @@ function openItemDetail(itemId) {
         textValue = rawContent;
     }
 
+    // แปลงข้อความลิงก์ให้เป็นปุ่มกดเปิดเว็บได้ทันทีในหน้าอ่าน
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const formattedText = textValue.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: var(--primary-cyan); text-decoration: underline; word-break: break-all;">${url}</a>`;
+    });
+
     const noteContentEl = document.getElementById('modal-file-content');
     if (noteContentEl) {
+        // ให้ซ่อน textarea หรือสลับไปโหมดแสดงผล (เราจะใช้ div แสดงผลเนื้อหาแทน เพื่อไม่ให้เป็นช่องพิมพ์)
         noteContentEl.value = textValue;
+        noteContentEl.style.display = 'none'; // ซ่อนช่องแก้ไขตอนเปิดดูปกติ
     }
 
-    // แสดงผลมีเดียที่แนบมากับโน้ต (สามารถคลิกเพื่อเปิด Lightbox หรือดาวน์โหลดได้)
+    // สร้างกล่องแสดงข้อความและมีเดียแบบอ่านอย่างเดียว
+    let displayContainer = document.getElementById('modal-note-view-container');
+    if (!displayContainer) {
+        displayContainer = document.createElement('div');
+        displayContainer.id = 'modal-note-view-container';
+        displayContainer.style.cssText = 'padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; line-height: 1.6; word-break: break-word;';
+        noteContentEl?.parentNode.insertBefore(displayContainer, noteContentEl);
+    }
+    displayContainer.style.display = 'block';
+    displayContainer.innerHTML = formattedText || '<span style="color: var(--text-muted);">ไม่มีเนื้อหาข้อความ</span>';
+
+    // แสดงผลมีเดียพร้อมปุ่มดาวน์โหลด/แชร์
     const embeddedMediaBox = document.getElementById('modal-note-media-display');
     if (embeddedMediaBox) {
         embeddedMediaBox.innerHTML = '';
@@ -516,13 +533,24 @@ function openItemDetail(itemId) {
             embeddedMediaBox.classList.remove('hidden');
             mediaList.forEach(media => {
                 const mWrap = document.createElement('div');
-                mWrap.style.margin = '10px 0';
-                mWrap.style.textAlign = 'center';
+                mWrap.style.cssText = 'margin: 10px 0; text-align: center; position: relative;';
+                
+                let mediaHtml = '';
                 if (media.type && media.type.startsWith('image/')) {
-                    mWrap.innerHTML = `<img src="${media.data}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer;" onclick="openLightboxForData('${media.name}', '${media.data}', '${media.type}')" title="คลิกเพื่อดูขนาดใหญ่"/>`;
+                    mediaHtml = `<img src="${media.data}" style="max-width: 100%; max-height: 220px; border-radius: 6px; cursor: pointer;" onclick="openLightboxForData('${media.name}', '${media.data}', '${media.type}')" title="คลิกเพื่อดูขนาดใหญ่"/>`;
                 } else if (media.type && media.type.startsWith('video/')) {
-                    mWrap.innerHTML = `<video src="${media.data}" controls style="max-width: 100%; max-height: 250px; border-radius: 6px;"></video>`;
+                    mediaHtml = `<video src="${media.data}" controls style="max-width: 100%; max-height: 220px; border-radius: 6px;"></video>`;
                 }
+
+                // เพิ่มปุ่มดาวน์โหลดไฟล์มีเดียแต่ละไฟล์โดยตรง
+                mWrap.innerHTML = `
+                    ${mediaHtml}
+                    <div style="margin-top: 5px; display: flex; justify-content: center; gap: 8px;">
+                        <a href="${media.data}" download="${media.name || 'mars-media'}" class="btn btn-sm btn-cyan" style="text-decoration: none; padding: 4px 10px; font-size: 11px;">
+                            <i data-lucide="download" style="width: 12px; height: 12px;"></i> ดาวน์โหลด
+                        </a>
+                    </div>
+                `;
                 embeddedMediaBox.appendChild(mWrap);
             });
         } else {
@@ -533,8 +561,20 @@ function openItemDetail(itemId) {
     const reminderInput = document.getElementById('modal-reminder-time');
     if (reminderInput) reminderInput.value = item.reminderTime || '';
 
+    // ปรับปุ่มบันทึกให้เปลี่ยนเป็นปุ่ม "สลับโหมดแก้ไข" หรือคงปุ่มบันทึกเมื่อกดแก้ไข
     document.getElementById('file-modal')?.classList.remove('hidden');
     refreshIcons();
+}
+
+// ฟังก์ชันเปิดโหมดแก้ไขโน้ต (เมื่อผู้ใช้ต้องการพิมพ์แก้ข้อความ)
+function enableNoteEditMode() {
+    const noteContentEl = document.getElementById('modal-file-content');
+    const displayContainer = document.getElementById('modal-note-view-container');
+    if (noteContentEl && displayContainer) {
+        displayContainer.style.display = 'none';
+        noteContentEl.style.display = 'block';
+        showToast('เปิดโหมดแก้ไขข้อความแล้ว', 'info');
+    }
 }
 
 // เปิด Lightbox สำหรับมีเดียทั่วไป หรือมีเดียในโน้ต
@@ -659,7 +699,6 @@ async function saveFileEdits() {
     if (item) {
         const newText = document.getElementById('modal-file-content').value;
         
-        // รักษาโครงสร้างมีเดียเดิมไว้ และอัปเดตเฉพาะข้อความใหม่
         try {
             const parsed = JSON.parse(item.content);
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
