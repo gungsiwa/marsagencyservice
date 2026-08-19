@@ -216,8 +216,11 @@
         let currentUser = null;
         let currentView = 'home';
         let searchQuery = '';
-        let db = [];
-        let trashBin = [];
+        
+        // โหลดข้อมูลจาก LocalStorage ทันทีตั้งแต่เริ่ม เพื่อให้หน้าจอไม่ว่างเปล่าเวลารีเฟรช (F5)
+        let db = JSON.parse(localStorage.getItem('mars_db') || '[]');
+        let trashBin = JSON.parse(localStorage.getItem('mars_trash') || '[]');
+
         let activeMediaList = [];
         let activeMediaIndex = 0;
 
@@ -226,6 +229,11 @@
             if (!error && data) {
                 db = data.filter(i => !i.deleted_at);
                 trashBin = data.filter(i => i.deleted_at);
+                
+                // บันทึกเก็บไว้ใน LocalStorage เพื่อความรวดเร็วในการเปิดครั้งถัดไป
+                localStorage.setItem('mars_db', JSON.stringify(db));
+                localStorage.setItem('mars_trash', JSON.stringify(trashBin));
+
                 renderView();
             }
         }
@@ -235,7 +243,7 @@
             const u = document.getElementById('login-user').value.trim().toLowerCase();
             const p = document.getElementById('login-pass').value.trim();
 
-            if ((u === 'admin' && p === 'adminmars') || (u === 'viewer' && p === 'viewer')) {
+            if ((u === 'admin' && p === 'admin') || (u === 'viewer' && p === 'viewer')) {
                 currentUser = u;
                 document.getElementById('user-initial').innerText = u.charAt(0);
                 document.getElementById('login-screen').classList.add('hidden');
@@ -252,7 +260,11 @@
                     badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30';
                     createBtn.classList.add('hidden'); createBtn.classList.remove('flex');
                 }
+                
+                // แสดงผลจากแคชทันที แล้วดึงข้อมูลจริงจากคลาวด์เงียบๆ ด้านหลัง
+                renderView();
                 fetchSupabaseData();
+                
                 router('home');
                 showToast('เชื่อมต่อ Supabase สำเร็จ', 'success');
             } else {
@@ -348,13 +360,11 @@
             return '';
         }
 
-        // ฟังก์ชันช่วยเช็กว่าเป็นวิดีโอหรือไม่ จาก Base64 หรือ URL
         function isVideoFile(url) {
             if (!url) return false;
             return url.startsWith('data:video/') || url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg') || url.includes('video');
         }
 
-        // ฟังก์ชันช่วยเรนเดอร์พรีวิวไฟล์ (แยกรูปภาพกับวิดีโออัตโนมัติ)
         function renderThumbnail(fileUrl) {
             if (isVideoFile(fileUrl)) {
                 return `
@@ -607,7 +617,6 @@
 
         function closeLightbox() { document.getElementById('lightbox-modal').classList.add('hidden'); document.getElementById('lightbox-modal').classList.remove('flex'); }
 
-        // ปรับ Lightbox ให้รองรับการเล่นวิดีโอแบบเต็มจอและมีปุ่มควบคุม (Controls) ด้วย
         function renderLightboxContent() {
             const currentFile = activeMediaList[activeMediaIndex];
             const container = document.getElementById('lightbox-content');
