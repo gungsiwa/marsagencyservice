@@ -1,315 +1,566 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mars Cloud System - Space Fleet Edition</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="style.css">
-
-    <script src="https://unpkg.com/lucide@latest" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="app.js" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MARS Cloud - Supabase Connected</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        mars: {
+                            50: '#fff7ed', 100: '#ffedd5', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 900: '#7c2d12',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Supabase JS SDK -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-mars-500 selection:text-white min-h-screen flex flex-col">
 
-    <canvas id="space-bg-canvas"></canvas>
-    <div id="toast-container"></div>
-
-    <div id="command-bar-overlay" class="command-overlay hidden">
-        <div class="command-box">
-            <div class="command-input-wrapper">
-                <i data-lucide="search"></i>
-                <input type="text" id="command-input" placeholder="พิมพ์ชื่อไฟล์, โน้ต หรือแท็กเพื่อค้นหาอย่างรวดเร็ว..." />
-            </div>
-            <div id="command-results" class="command-results-list"></div>
-        </div>
-    </div>
-
-    <div id="login-screen" class="login-wrapper">
-        <div class="login-card">
-            <div class="brand-badge">
-                <i data-lucide="rocket"></i>
-            </div>
-            <h2>MARS CLOUD SYSTEM</h2>
-            <p class="subtitle">ระบบจัดการฐานข้อมูลและคลังสื่อสารองค์กร</p>
-            
-            <form id="login-form">
-                <div class="form-group mb-2">
-                    <div class="input-glow">
-                        <i data-lucide="user"></i>
-                        <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน (Username)" required autocomplete="username">
-                    </div>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-mars-500 to-amber-500"></div>
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-mars-500/10 border border-mars-500/20 text-mars-500 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg shadow-mars-500/10">
+                    <i class="fa-solid fa-meteor"></i>
                 </div>
-                <div class="form-group mb-2">
-                    <div class="input-glow">
-                        <i data-lucide="lock"></i>
-                        <input type="password" id="login-password" placeholder="รหัสผ่าน (Password)" required autocomplete="current-password">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block btn-glow">
-                    เข้าสู่ระบบ <i data-lucide="arrow-right"></i>
-                </button>
-            </form>
-            <p id="login-error" class="error-msg hidden">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!</p>
-        </div>
-    </div>
-
-    <div id="app-screen" class="app-layout hidden">
-
-        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
-
-        <header class="mobile-navbar">
-            <div class="mobile-brand">
-                <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
-                <span class="mobile-brand-title">MARS DMS</span>
-            </div>
-            <button id="btn-toggle-sidebar" class="btn-icon-menu" type="button" aria-label="Toggle Menu">
-                <i data-lucide="menu"></i>
-            </button>
-        </header>
-
-        <aside id="main-sidebar" class="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-logo-icon"><i data-lucide="rocket"></i></div>
-                <div class="brand-title">
-                    <h2>MARS DMS</h2>
-                    <span class="version-tag">Space Fleet v3.0</span>
-                </div>
-                <button id="btn-close-sidebar" class="btn-close-sidebar" type="button" aria-label="Close Menu">
-                    <i data-lucide="x"></i>
-                </button>
+                <h1 class="text-2xl font-bold tracking-tight">MARS Cloud</h1>
+                <p class="text-xs text-slate-400 mt-1">Supabase Cloud Connected System</p>
             </div>
 
-            <div class="user-profile-box">
-                <div class="user-avatar"><i data-lucide="shield-check"></i></div>
-                <div class="user-details">
-                    <span class="user-name">Admin Commander</span>
-                    <span class="user-status"><span class="pulse-dot"></span> Online</span>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
+                    <input type="text" id="login-user" required placeholder="admin หรือ viewer" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-mars-500 transition-all">
                 </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="#" id="nav-dashboard" class="nav-item active" onclick="switchTab('dashboard', 'nav-dashboard')">
-                    <i data-lucide="layout-dashboard"></i> ภาพรวมระบบ (Dashboard)
-                </a>
-                <a href="#" id="nav-files" class="nav-item" onclick="navigateToFolder('root')">
-                    <i data-lucide="folder-kanban"></i> คลังไฟล์ทั้งหมด
-                </a>
-                <a href="#" id="nav-media" class="nav-item" onclick="navigateToFolder('folder_media')">
-                    <i data-lucide="image"></i> ภาพและวิดีโอ
-                </a>
-                <a href="#" id="nav-trash" class="nav-item" onclick="switchTab('trash', 'nav-trash')">
-                    <i data-lucide="trash-2"></i> ถังขยะ (<span id="trash-count">0</span>)
-                </a>
-            </nav>
-
-            <button id="btn-logout" class="btn btn-danger-outline btn-block mt-auto" type="button" onclick="logout()">
-                <i data-lucide="log-out"></i> ออกจากระบบ
-            </button>
-        </aside>
-
-        <main class="main-wrapper" id="global-drop-zone">
-            
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1 id="page-title">ภาพรวมระบบ Command Center</h1>
-                    <div id="breadcrumb" class="breadcrumb-container"></div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Password</label>
+                    <input type="password" id="login-pass" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-mars-500 transition-all">
                 </div>
-                <div class="topbar-right">
-                    <div class="clock-badge"><i data-lucide="clock"></i> <span id="current-clock">--:--:--</span></div>
-                    <div id="sync-status" class="status-badge online"><i data-lucide="wifi"></i> Connected</div>
-                    <button id="btn-open-create-modal" class="btn btn-cyan btn-glow" type="button" onclick="openCreateModal()">
-                        <i data-lucide="plus-circle"></i> สร้างรายการใหม่
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-gradient-to-r from-mars-600 to-mars-500 hover:from-mars-700 hover:to-mars-600 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-mars-500/20 text-sm">
+                        Sign In to MARS
                     </button>
                 </div>
+            </form>
+            <div class="mt-6 text-center text-xs text-slate-500 border-t border-slate-800/80 pt-4">
+                Tip: ใช้ <code class="text-mars-400 font-mono">admin</code> (สิทธิ์เต็ม) หรือ <code class="text-sky-400 font-mono">viewer</code> (ดูอย่างเดียว)
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-wrapper" class="flex flex-1 overflow-hidden hidden">
+        <!-- SIDEBAR -->
+        <aside class="w-20 lg:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 transition-all z-20">
+            <div>
+                <div class="h-16 flex items-center px-4 lg:px-6 border-b border-slate-800 gap-3">
+                    <div class="w-10 h-10 bg-mars-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-md shadow-mars-500/30">
+                        <i class="fa-solid fa-meteor text-lg"></i>
+                    </div>
+                    <div class="hidden lg:block">
+                        <h2 class="font-bold text-sm tracking-wide">MARS Cloud</h2>
+                        <span id="role-badge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"></span>
+                    </div>
+                </div>
+
+                <nav class="p-3 space-y-1.5">
+                    <button onclick="router('home')" class="nav-btn w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group" data-target="home">
+                        <i class="fa-solid fa-house w-5 text-center text-base group-hover:text-mars-500 transition-colors"></i>
+                        <span class="hidden lg:inline text-sm font-medium">Home</span>
+                    </button>
+                    <button onclick="router('notes')" class="nav-btn w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group" data-target="notes">
+                        <i class="fa-solid fa-book-open w-5 text-center text-base group-hover:text-mars-500 transition-colors"></i>
+                        <span class="hidden lg:inline text-sm font-medium">สมุดโน้ต</span>
+                    </button>
+                    <button onclick="router('media')" class="nav-btn w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group" data-target="media">
+                        <i class="fa-solid fa-photo-film w-5 text-center text-base group-hover:text-mars-500 transition-colors"></i>
+                        <span class="hidden lg:inline text-sm font-medium">มีเดีย & ไฟล์</span>
+                    </button>
+                    <button onclick="router('links')" class="nav-btn w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group" data-target="links">
+                        <i class="fa-solid fa-link w-5 text-center text-base group-hover:text-mars-500 transition-colors"></i>
+                        <span class="hidden lg:inline text-sm font-medium">คลังลิงก์</span>
+                    </button>
+                    <button onclick="router('trash')" class="nav-btn w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group" data-target="trash">
+                        <i class="fa-solid fa-trash-can w-5 text-center text-base group-hover:text-mars-500 transition-colors"></i>
+                        <span class="hidden lg:inline text-sm font-medium">ถังขยะ</span>
+                    </button>
+                </nav>
             </div>
 
-            <div class="content-body">
-
-                <div id="view-dashboard" class="tab-view">
-                    <div class="stat-cards-grid">
-                        <div class="stat-card card-cyan" onclick="navigateToFolder('root')">
-                            <div class="stat-header">
-                                <span class="stat-title">ไฟล์ทั้งหมด</span>
-                                <div class="stat-icon"><i data-lucide="files"></i></div>
-                            </div>
-                            <div class="stat-num" id="stat-total">0</div>
-                        </div>
-                        <div class="stat-card card-purple" onclick="navigateToFolder('folder_notes')">
-                            <div class="stat-header">
-                                <span class="stat-title">โน้ตข้อความ</span>
-                                <div class="stat-icon"><i data-lucide="file-text"></i></div>
-                            </div>
-                            <div class="stat-num" id="stat-notes">0</div>
-                        </div>
-                        <div class="stat-card card-pink" onclick="navigateToFolder('folder_media')">
-                            <div class="stat-header">
-                                <span class="stat-title">คลังรูป/วิดีโอ</span>
-                                <div class="stat-icon"><i data-lucide="film"></i></div>
-                            </div>
-                            <div class="stat-num" id="stat-media">0</div>
-                        </div>
-                        <div class="stat-card card-orange" onclick="navigateToFolder('folder_links')">
-                            <div class="stat-header">
-                                <span class="stat-title">ลิงก์เว็บ</span>
-                                <div class="stat-icon"><i data-lucide="link"></i></div>
-                            </div>
-                            <div class="stat-num" id="stat-links">0</div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-widgets-grid">
-                        <div class="widget-box">
-                            <div class="widget-header">
-                                <h4><i data-lucide="edit-3"></i> Quick Scratchpad (บันทึกด่วน)</h4>
-                                <button class="btn btn-sm btn-ghost" type="button" onclick="saveScratchpad()"><i data-lucide="save"></i> บันทึก</button>
-                            </div>
-                            <textarea id="quick-scratchpad" placeholder="พิมพ์ข้อความบันทึกชั่วคราวที่นี่..."></textarea>
-                        </div>
-                        <div class="widget-box">
-                            <div class="widget-header">
-                                <h4><i data-lucide="activity"></i> ประวัติกิจกรรมล่าสุด (System Logs)</h4>
-                            </div>
-                            <div id="recent-activity-list" class="activity-timeline"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="view-files" class="tab-view hidden">
-                    <div class="toolbar-bar">
-                        <div class="search-field">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="search-input" placeholder="ค้นหาชื่อไฟล์, คำอธิบาย หรือแท็ก..." oninput="renderApp()" />
-                        </div>
-                        <div class="view-controls">
-                            <div class="view-switcher-toggle">
-                                <button id="btn-view-grid" class="btn-toggle active" type="button" onclick="setTileView('grid')"><i data-lucide="grid"></i></button>
-                                <button id="btn-view-list" class="btn-toggle" type="button" onclick="setTileView('list')"><i data-lucide="list"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="file-list" class="file-grid view-grid"></div>
-                </div>
-
-                <div id="view-trash" class="tab-view hidden">
-                    <div id="trash-list" class="trash-grid"></div>
-                </div>
-
+            <div class="p-3 border-t border-slate-800">
+                <button onclick="logout()" class="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all group">
+                    <i class="fa-solid fa-arrow-right-from-bracket w-5 text-center text-base"></i>
+                    <span class="hidden lg:inline text-sm font-medium">ออกจากระบบ</span>
+                </button>
             </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-950">
+            <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4 flex-1 max-w-xl">
+                    <div class="relative w-full">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                        <input type="text" id="global-search" oninput="handleSearch(this.value)" placeholder="ค้นหาชื่อหัวข้อ, เนื้อหา หรือลิงก์..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-mars-500 transition-all">
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-create" onclick="openCreateModal()" class="hidden bg-mars-600 hover:bg-mars-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-mars-500/20 items-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="hidden sm:inline">สร้างข้อมูลใหม่</span>
+                    </button>
+                    <div class="w-9 h-9 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center font-bold text-xs uppercase text-mars-400" id="user-initial">A</div>
+                </div>
+            </header>
+
+            <div id="view-container" class="flex-1 overflow-y-auto p-6 lg:p-8"></div>
         </main>
     </div>
 
-    <div id="create-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3><i data-lucide="plus-square"></i> สร้างรายการใหม่</h3>
-                <button id="btn-close-create-modal" class="btn-close" type="button" onclick="closeCreateModal()"><i data-lucide="x"></i></button>
+    <!-- MODAL: CREATE / EDIT -->
+    <div id="data-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <h3 id="modal-title" class="font-bold text-base">สร้างข้อมูลใหม่</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-100 transition-all"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="create-type">ประเภทรายการ:</label>
-                    <select id="create-type" onchange="toggleCreateFields()">
-                        <option value="note">📝 โน้ตข้อความ</option>
-                        <option value="media">🖼️ ภาพ / วิดีโอ</option>
-                        <option value="link">🔗 ลิงก์เว็บไซต์</option>
-                        <option value="folder">📁 โฟลเดอร์ใหม่</option>
+            
+            <form id="data-form" onsubmit="handleFormSubmit(event)" class="p-6 overflow-y-auto space-y-4 flex-1">
+                <input type="hidden" id="form-id">
+                <input type="hidden" id="form-folder" value="home">
+                
+                <div id="type-select-group">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">ประเภทข้อมูล</label>
+                    <select id="form-type" onchange="switchFormType(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-mars-500 transition-all">
+                        <option value="note">สมุดโน้ต (Note)</option>
+                        <option value="media">มีเดีย (ภาพ / วิดีโอ)</option>
+                        <option value="link">คลังลิงก์ (Web Link)</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="create-parent">ตำแหน่งจัดเก็บ:</label>
-                    <select id="create-parent"></select>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">ชื่อหัวข้อ (ไม่บังคับ)</label>
+                    <input type="text" id="form-title" placeholder="ระบุชื่อหัวข้อ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-mars-500 transition-all">
                 </div>
-                <div class="form-group">
-                    <label for="create-title">หัวข้อ / ชื่อไฟล์:</label>
-                    <input type="text" id="create-title" placeholder="เช่น รายงานประจำวัน, ภาพกิจกรรม" />
-                </div>
-                <div class="form-group">
-                    <label for="create-tags">แท็ก (ใส่เครื่องหมายจุลภาค , คั่น):</label>
-                    <input type="text" id="create-tags" placeholder="เช่น สำคัญ, งาน, ด่วน" />
-                </div>
-                <div class="form-group">
-                    <label for="create-reminder-time">⏰ ตั้งเวลาแจ้งเตือน (Optional):</label>
-                    <input type="datetime-local" id="create-reminder-time" />
-                </div>
-                <div id="link-input-group" class="form-group hidden">
-                    <label for="create-link-url">URL ลิงก์:</label>
-                    <input type="url" id="create-link-url" placeholder="https://example.com" />
-                </div>
-                <div id="media-upload-group" class="form-group hidden">
-                    <label id="media-upload-label">เลือกไฟล์ภาพ / วิดีโอ:</label>
-                    <div id="drop-zone" class="drop-zone" onclick="document.getElementById('media-files-input').click()">
-                        <i data-lucide="upload-cloud" style="width: 36px; height: 36px; color: var(--primary-cyan);"></i>
-                        <p>คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
-                        <input type="file" id="media-files-input" multiple accept="image/*,video/*" class="hidden" onchange="handleFileSelect(event)" />
+
+                <div id="field-note-container" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">เนื้อหาโน้ต</label>
+                        <textarea id="form-note-content" rows="5" placeholder="พิมพ์เนื้อหาที่นี่..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:outline-none focus:border-mars-500 transition-all"></textarea>
                     </div>
-                    <div id="media-previews-container" class="media-upload-previews"></div>
                 </div>
-                <div id="content-input-group" class="form-group">
-                    <label id="content-label" for="create-content">รายละเอียด / เนื้อหา:</label>
-                    <textarea id="create-content" rows="4" placeholder="พิมพ์รายละเอียดที่ต้องการบันทึก..."></textarea>
+
+                <div id="field-media-container" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">อัปโหลดภาพหรือวิดีโอ (เลือกได้หลายไฟล์)</label>
+                        <input type="file" id="form-media-files" multiple accept="image/*,video/*" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-400">
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button id="btn-close-modal-cancel" class="btn btn-ghost" type="button" onclick="closeCreateModal()">ยกเลิก</button>
-                <button id="btn-submit-create" class="btn btn-primary" type="button" onclick="submitCreateItem()"><i data-lucide="check"></i> บันทึกข้อมูล</button>
-            </div>
+
+                <div id="field-link-container" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">URL เว็บไซต์ปลายทาง</label>
+                        <input type="url" id="form-link-url" placeholder="https://example.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-mars-500 transition-all">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+                    <button type="button" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2.5 rounded-xl text-sm font-medium transition-all">ยกเลิก</button>
+                    <button type="submit" class="bg-mars-600 hover:bg-mars-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg shadow-mars-500/20">บันทึกข้อมูล</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <div id="lightbox-modal" class="lightbox-overlay hidden">
-        <div class="lightbox-container">
-            <button class="btn-lightbox-close" type="button" onclick="closeLightbox()"><i data-lucide="x"></i></button>
-            <div id="lightbox-media-display" class="lightbox-content"></div>
-            <div class="lightbox-sidebar">
-                <h3 id="lightbox-title">สื่อมีเดีย</h3>
-                <span id="lightbox-date" class="lightbox-meta"></span>
-                <div class="lightbox-caption-box">
-                    <label><i data-lucide="align-left"></i> คำอธิบาย</label>
-                    <p id="lightbox-caption">ไม่มีคำอธิบายเพิ่มเติม</p>
-                </div>
-                <div class="lightbox-actions">
-                    <a id="btn-lightbox-download" class="btn btn-primary btn-block" download>
-                        <i data-lucide="download"></i> ดาวน์โหลดไฟล์
-                    </a>
-                    <button id="btn-lightbox-share" class="btn btn-ghost btn-block mb-2" type="button" onclick="shareLightboxMedia()">
-                        <i data-lucide="share-2"></i> แชร์ / คัดลอกลิงก์
-                    </button>
-                    <button id="btn-lightbox-delete" class="btn btn-danger-outline btn-block" type="button" onclick="deleteLightboxMedia()">
-                        <i data-lucide="trash-2"></i> ลบสื่อนี้
-                    </button>
-                </div>
-            </div>
+    <!-- LIGHTBOX MODAL -->
+    <div id="lightbox-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex-col items-center justify-center p-4">
+        <button onclick="closeLightbox()" class="absolute top-6 right-6 w-12 h-12 rounded-full bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center text-xl hover:bg-mars-600 transition-all z-10"><i class="fa-solid fa-xmark"></i></button>
+        <div class="relative max-w-5xl max-h-[80vh] flex items-center justify-center">
+            <div id="lightbox-content" class="flex items-center justify-center"></div>
+            <button id="lightbox-prev" onclick="prevMedia()" class="absolute left-[-60px] top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center hover:bg-mars-600 transition-all"><i class="fa-solid fa-chevron-left"></i></button>
+            <button id="lightbox-next" onclick="nextMedia()" class="absolute right-[-60px] top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center hover:bg-mars-600 transition-all"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="mt-6 flex items-center gap-4">
+            <button onclick="downloadCurrentMedia()" class="bg-mars-600 hover:bg-mars-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-mars-500/20"><i class="fa-solid fa-download"></i> ดาวน์โหลดไฟล์</button>
+            <button onclick="shareCurrentMedia()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2"><i class="fa-solid fa-share-nodes"></i> แชร์ไฟล์</button>
         </div>
     </div>
 
-    <div id="file-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3 id="modal-title">รายละเอียดโน้ต</h3>
-                <button id="btn-close-modal" class="btn-close" type="button" onclick="closeFileModal()"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="modal-reminder-time">⏰ เวลาแจ้งเตือน:</label>
-                    <input type="datetime-local" id="modal-reminder-time" />
-                </div>
-                <div id="modal-note-media-display" class="note-embedded-media-box hidden"></div>
-                <div class="form-group">
-                    <label for="modal-file-content">รายละเอียดเนื้อหา:</label>
-                    <textarea id="modal-file-content" rows="6"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button onclick="shareActiveNote()" class="btn btn-ghost" type="button"><i data-lucide="share-2"></i> แชร์</button>
-                <button id="btn-save-file" class="btn btn-primary" type="button" onclick="saveFileEdits()"><i data-lucide="save"></i> บันทึกการแก้ไข</button>
-            </div>
-        </div>
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-800 text-slate-100 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all transform translate-y-20 opacity-0 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-mars-500 text-lg"></i>
+        <span id="toast-message" class="text-sm font-medium">บันทึกสำเร็จ</span>
     </div>
 
+    <!-- SUPABASE CLIENT & APP LOGIC -->
+    <script>
+        const SUPABASE_URL = 'https://lxnlhqzypezvelmspevv.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_fhisWr9_VvHAwb2INiMCQQ_ya5nXH9q';
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentUser = null;
+        let currentView = 'home';
+        let searchQuery = '';
+        let db = [];
+        let trashBin = [];
+        let activeMediaList = [];
+        let activeMediaIndex = 0;
+
+        async function fetchSupabaseData() {
+            const { data, error } = await client.from('mars_items').select('*').order('created_at', { ascending: false });
+            if (!error && data) {
+                db = data.filter(i => !i.deleted_at);
+                trashBin = data.filter(i => i.deleted_at);
+                renderView();
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const u = document.getElementById('login-user').value.trim().toLowerCase();
+            const p = document.getElementById('login-pass').value.trim();
+
+            if ((u === 'admin' && p === 'admin') || (u === 'viewer' && p === 'viewer')) {
+                currentUser = u;
+                document.getElementById('user-initial').innerText = u.charAt(0);
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-wrapper').classList.remove('hidden');
+                
+                const badge = document.getElementById('role-badge');
+                const createBtn = document.getElementById('btn-create');
+                if (u === 'admin') {
+                    badge.innerText = 'Admin Mode';
+                    badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-mars-500/20 text-mars-400 border border-mars-500/30';
+                    createBtn.classList.remove('hidden'); createBtn.classList.add('flex');
+                } else {
+                    badge.innerText = 'Viewer Mode';
+                    badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30';
+                    createBtn.classList.add('hidden'); createBtn.classList.remove('flex');
+                }
+                fetchSupabaseData();
+                router('home');
+                showToast('เชื่อมต่อ Supabase สำเร็จ', 'success');
+            } else {
+                showToast('Username หรือ Password ไม่ถูกต้อง', 'error');
+            }
+        });
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('app-wrapper').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('login-form').reset();
+            showToast('ออกจากระบบแล้ว', 'info');
+        }
+
+        function router(view) {
+            currentView = view;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.target === view) {
+                    btn.classList.add('bg-slate-800', 'text-slate-100'); btn.classList.remove('text-slate-400');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-slate-100'); btn.classList.add('text-slate-400');
+                }
+            });
+            renderView();
+        }
+
+        function handleSearch(val) { searchQuery = val.toLowerCase(); renderView(); }
+
+        function renderView() {
+            const container = document.getElementById('view-container');
+            let filteredDB = db.filter(item => {
+                return searchQuery === '' || 
+                    (item.title && item.title.toLowerCase().includes(searchQuery)) ||
+                    (item.content && item.content.toLowerCase().includes(searchQuery)) ||
+                    (item.url && item.url.toLowerCase().includes(searchQuery));
+            });
+
+            if (currentView === 'home') {
+                container.innerHTML = `
+                    <div class="max-w-7xl mx-auto space-y-8">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h1 class="text-2xl font-bold tracking-tight">MARS Cloud Dashboard</h1>
+                                <p class="text-xs text-slate-400 mt-1">ซิงค์ข้อมูลผ่าน Supabase Cloud เรียบร้อย</p>
+                            </div>
+                            ${currentUser === 'admin' ? `<button onclick="openCreateModal(null, 'home')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border border-slate-700/60 transition-all"><i class="fa-solid fa-folder-plus text-mars-500"></i> สร้างโฟลเดอร์ / ข้อมูลใหม่</button>` : ''}
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                            <div onclick="router('notes')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
+                                <div class="w-12 h-12 rounded-xl bg-mars-500/10 border border-mars-500/20 text-mars-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-book-open"></i></div>
+                                <h3 class="font-bold text-base mb-1">สมุดโน้ต (Notes)</h3>
+                                <p class="text-xs text-slate-400">บันทึกข้อความ เอกสาร และลิงก์ภายใน</p>
+                            </div>
+                            <div onclick="router('media')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
+                                <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-photo-film"></i></div>
+                                <h3 class="font-bold text-base mb-1">มีเดีย & ไฟล์ (Media)</h3>
+                                <p class="text-xs text-slate-400">คลังภาพและวิดีโอพร้อมพรีวิวและดาวน์โหลด</p>
+                            </div>
+                            <div onclick="router('links')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
+                                <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-link"></i></div>
+                                <h3 class="font-bold text-base mb-1">คลังลิงก์ (Web Links)</h3>
+                                <p class="text-xs text-slate-400">ลิงก์เว็บไซต์ปลายทาง คลิกเดียวเปิดทันที</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 pt-4">
+                            <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">ข้อมูลล่าสุดทั้งหมด</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${filteredDB.length === 0 ? `<div class="col-span-2 text-center py-12 text-slate-500 text-sm">ไม่พบข้อมูลในระบบ</div>` : filteredDB.map(item => renderCard(item)).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+            } else if (currentView === 'notes') {
+                const items = filteredDB.filter(i => i.type === 'note');
+                container.innerHTML = `<div class="max-w-5xl mx-auto space-y-6"><div class="flex items-center justify-between"><h1 class="text-2xl font-bold tracking-tight">สมุดโน้ตทั้งหมด</h1>${currentUser === 'admin' ? `<button onclick="openCreateModal('note', 'notes')" class="bg-mars-600 hover:bg-mars-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มโน้ตใหม่</button>` : ''}</div><div class="space-y-4">${items.length === 0 ? `<div class="text-center py-12 text-slate-500 text-sm">ยังไม่มีสมุดโน้ต</div>` : items.map(item => renderPaperView(item)).join('')}</div></div>`;
+            } else if (currentView === 'media') {
+                const items = filteredDB.filter(i => i.type === 'media');
+                container.innerHTML = `<div class="max-w-7xl mx-auto space-y-6"><div class="flex items-center justify-between"><h1 class="text-2xl font-bold tracking-tight">คลังมีเดียและไฟล์</h1>${currentUser === 'admin' ? `<button onclick="openCreateModal('media', 'media')" class="bg-mars-600 hover:bg-mars-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-plus"></i> อัปโหลดมีเดีย</button>` : ''}</div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">${items.length === 0 ? `<div class="col-span-3 text-center py-12 text-slate-500 text-sm">ยังไม่มีไฟล์มีเดีย</div>` : items.map(item => renderMediaCard(item)).join('')}</div></div>`;
+            } else if (currentView === 'links') {
+                const items = filteredDB.filter(i => i.type === 'link');
+                container.innerHTML = `<div class="max-w-5xl mx-auto space-y-6"><div class="flex items-center justify-between"><h1 class="text-2xl font-bold tracking-tight">คลังลิงก์เว็บไซต์</h1>${currentUser === 'admin' ? `<button onclick="openCreateModal('link', 'links')" class="bg-mars-600 hover:bg-mars-500 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มลิงก์ใหม่</button>` : ''}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-4">${items.length === 0 ? `<div class="col-span-2 text-center py-12 text-slate-500 text-sm">ยังไม่มีลิงก์</div>` : items.map(item => renderLinkCard(item)).join('')}</div></div>`;
+            } else if (currentView === 'trash') {
+                container.innerHTML = `<div class="max-w-5xl mx-auto space-y-6"><h1 class="text-2xl font-bold tracking-tight">ถังขยะ (Trash Bin)</h1><div class="space-y-4">${trashBin.length === 0 ? `<div class="text-center py-12 text-slate-500 text-sm">ถังขยะว่างเปล่า</div>` : trashBin.map(item => renderTrashCard(item)).join('')}</div></div>`;
+            }
+        }
+
+        function renderCard(item) {
+            if (item.type === 'note') return renderPaperView(item);
+            if (item.type === 'media') return renderMediaCard(item);
+            if (item.type === 'link') return renderLinkCard(item);
+            return '';
+        }
+
+        function renderPaperView(item) {
+            let formattedContent = item.content ? item.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-mars-400 underline hover:text-mars-300">$1</a>') : '';
+            return `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative group shadow-lg">
+                    ${currentUser === 'admin' ? renderOptionsMenu(item.id) : ''}
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-mars-500/10 text-mars-500 flex items-center justify-center text-xs"><i class="fa-solid fa-book-open"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200">${item.title || 'สมุดโน้ต (ไม่มีชื่อหัวข้อ)'}</h4>
+                            <span class="text-[10px] text-slate-500">${new Date(item.created_at).toLocaleDateString('th-TH')}</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">${formattedContent}</div>
+                </div>`;
+        }
+
+        function renderMediaCard(item) {
+            const files = item.files || [];
+            const previewFiles = files.slice(0, 3);
+            return `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative group shadow-lg flex flex-col justify-between">
+                    ${currentUser === 'admin' ? renderOptionsMenu(item.id) : ''}
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs"><i class="fa-solid fa-photo-film"></i></div>
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-200">${item.title || 'คลังมีเดีย'}</h4>
+                                <span class="text-[10px] text-slate-500">${files.length} ไฟล์แนบ</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mt-3 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, 0)'>
+                            ${previewFiles.map(f => `<div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800"><img src="${f}" class="w-full h-full object-cover"></div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+                        <span>คลิกเพื่อดูภาพเต็ม</span>
+                        <button onclick='openLightbox(${JSON.stringify(files)}, 0)' class="text-mars-400 hover:text-mars-300 font-medium">เปิดดูสไลด์</button>
+                    </div>
+                </div>`;
+        }
+
+        function renderLinkCard(item) {
+            return `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative group shadow-lg flex items-center justify-between cursor-pointer hover:border-sky-500/50 transition-all" onclick="window.open('${item.url}', '_blank')">
+                    ${currentUser === 'admin' ? `<div onclick="event.stopPropagation()">${renderOptionsMenu(item.id)}</div>` : ''}
+                    <div class="flex items-center gap-4 pr-10">
+                        <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center text-base shrink-0"><i class="fa-solid fa-link"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-sky-400 transition-colors">${item.title || item.url}</h4>
+                            <p class="text-xs text-slate-400 truncate max-w-sm mt-0.5">${item.url}</p>
+                        </div>
+                    </div>
+                    <div class="text-slate-500 group-hover:text-sky-400"><i class="fa-solid fa-external-link-alt text-sm"></i></div>
+                </div>`;
+        }
+
+        function renderTrashCard(item) {
+            return `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center justify-between shadow-lg">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-base shrink-0"><i class="fa-solid fa-trash-can"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200">${item.title || 'รายการที่ถูกลบ'}</h4>
+                            <span class="text-[10px] text-slate-400">ประเภท: ${item.type}</span>
+                        </div>
+                    </div>
+                    ${currentUser === 'admin' ? `<div class="flex items-center gap-2"><button onclick="restoreItem('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-mars-400 px-3.5 py-2 rounded-xl text-xs font-medium">กู้คืน</button><button onclick="permanentDelete('${item.id}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-medium">ลบถาวร</button></div>` : ''}
+                </div>`;
+        }
+
+        function renderOptionsMenu(id) {
+            return `
+                <div class="absolute top-4 right-4 z-10">
+                    <button onclick="toggleMenu(event, '${id}')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-ellipsis"></i></button>
+                    <div id="menu-${id}" class="hidden absolute right-0 mt-2 w-36 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl py-1.5 z-20">
+                        <button onclick="editItem('${id}')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-mars-500"></i> แก้ไข</button>
+                        <button onclick="moveToTrash('${id}')" class="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2"><i class="fa-solid fa-trash-can"></i> ลบ</button>
+                    </div>
+                </div>`;
+        }
+
+        function toggleMenu(e, id) {
+            e.stopPropagation();
+            document.querySelectorAll('[id^="menu-"]').forEach(m => { if (m.id !== `menu-${id}`) m.classList.add('hidden'); });
+            document.getElementById(`menu-${id}`).classList.toggle('hidden');
+        }
+
+        window.addEventListener('click', () => { document.querySelectorAll('[id^="menu-"]').forEach(m => m.classList.add('hidden')); });
+
+        function openCreateModal(forcedType = null, folder = 'home') {
+            document.getElementById('form-id').value = '';
+            document.getElementById('form-title').value = '';
+            document.getElementById('form-note-content').value = '';
+            document.getElementById('form-media-files').value = '';
+            document.getElementById('form-link-url').value = '';
+            document.getElementById('form-folder').value = folder;
+            document.getElementById('modal-title').innerText = 'สร้างข้อมูลใหม่';
+
+            const typeSelect = document.getElementById('form-type');
+            const typeGroup = document.getElementById('type-select-group');
+            if (forcedType) { typeSelect.value = forcedType; typeGroup.classList.add('hidden'); }
+            else { typeSelect.value = 'note'; typeGroup.classList.remove('hidden'); }
+            switchFormType(typeSelect.value);
+            document.getElementById('data-modal').classList.remove('hidden'); document.getElementById('data-modal').classList.add('flex');
+        }
+
+        function closeModal() { document.getElementById('data-modal').classList.add('hidden'); document.getElementById('data-modal').classList.remove('flex'); }
+
+        function switchFormType(type) {
+            document.getElementById('field-note-container').classList.add('hidden');
+            document.getElementById('field-media-container').classList.add('hidden');
+            document.getElementById('field-link-container').classList.add('hidden');
+            if (type === 'note') document.getElementById('field-note-container').classList.remove('hidden');
+            if (type === 'media') document.getElementById('field-media-container').classList.remove('hidden');
+            if (type === 'link') document.getElementById('field-link-container').classList.remove('hidden');
+        }
+
+        function editItem(id) {
+            const item = db.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('form-id').value = item.id;
+            document.getElementById('form-title').value = item.title || '';
+            document.getElementById('form-folder').value = item.folder || 'home';
+            document.getElementById('form-type').value = item.type;
+            document.getElementById('type-select-group').classList.add('hidden');
+            document.getElementById('modal-title').innerText = 'แก้ไขข้อมูล';
+            switchFormType(item.type);
+            if (item.type === 'note') document.getElementById('form-note-content').value = item.content || '';
+            if (item.type === 'link') document.getElementById('form-link-url').value = item.url || '';
+            document.getElementById('data-modal').classList.remove('hidden'); document.getElementById('data-modal').classList.add('flex');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('form-id').value;
+            const type = document.getElementById('form-type').value;
+            const title = document.getElementById('form-title').value.trim();
+            const folder = document.getElementById('form-folder').value;
+
+            if (id) {
+                let updateData = { title };
+                if (type === 'note') updateData.content = document.getElementById('form-note-content').value;
+                if (type === 'link') updateData.url = document.getElementById('form-link-url').value;
+                
+                const { error } = await client.from('mars_items').update(updateData).eq('id', id);
+                if (!error) { showToast('อัปเดตข้อมูลสำเร็จ', 'success'); fetchSupabaseData(); }
+                else { showToast('เกิดข้อผิดพลาดในการอัปเดต', 'error'); }
+            } else {
+                let newItem = {
+                    id: 'mars_' + Date.now(),
+                    type,
+                    title,
+                    folder,
+                    created_at: new Date().toISOString()
+                };
+                if (type === 'note') newItem.content = document.getElementById('form-note-content').value;
+                if (type === 'link') newItem.url = document.getElementById('form-link-url').value;
+                if (type === 'media') {
+                    newItem.files = ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'];
+                }
+
+                const { error } = await client.from('mars_items').insert([newItem]);
+                if (!error) { showToast('สร้างข้อมูลสำเร็จ', 'success'); fetchSupabaseData(); }
+                else { showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
+            }
+            closeModal();
+        }
+
+        async function moveToTrash(id) {
+            const { error } = await client.from('mars_items').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+            if (!error) { showToast('ย้ายไปถังขยะเรียบร้อย', 'info'); fetchSupabaseData(); }
+        }
+
+        async function restoreItem(id) {
+            const { error } = await client.from('mars_items').update({ deleted_at: null }).eq('id', id);
+            if (!error) { showToast('กู้คืนข้อมูลสำเร็จ', 'success'); fetchSupabaseData(); }
+        }
+
+        async function permanentDelete(id) {
+            const { error } = await client.from('mars_items').delete().eq('id', id);
+            if (!error) { showToast('ลบถาวรเรียบร้อย', 'success'); fetchSupabaseData(); }
+        }
+
+        function openLightbox(files, index) {
+            activeMediaList = files; activeMediaIndex = index;
+            renderLightboxContent();
+            document.getElementById('lightbox-modal').classList.remove('hidden'); document.getElementById('lightbox-modal').classList.add('flex');
+        }
+
+        function closeLightbox() { document.getElementById('lightbox-modal').classList.add('hidden'); document.getElementById('lightbox-modal').classList.remove('flex'); }
+
+        function renderLightboxContent() {
+            document.getElementById('lightbox-content').innerHTML = `<img src="${activeMediaList[activeMediaIndex]}" class="max-h-[75vh] max-w-full rounded-xl object-contain shadow-2xl">`;
+        }
+
+        function nextMedia() { activeMediaIndex = (activeMediaIndex + 1) % activeMediaList.length; renderLightboxContent(); }
+        function prevMedia() { activeMediaIndex = (activeMediaIndex - 1 + activeMediaList.length) % activeMediaList.length; renderLightboxContent(); }
+
+        function downloadCurrentMedia() {
+            const a = document.createElement('a'); a.href = activeMediaList[activeMediaIndex]; a.download = `mars-${Date.now()}`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            showToast('ดาวน์โหลดสำเร็จ', 'success');
+        }
+
+        function shareCurrentMedia() {
+            const file = activeMediaList[activeMediaIndex];
+            if (navigator.share) { navigator.share({ title: 'MARS Cloud', url: file }).catch(() => {}); }
+            else { navigator.clipboard.writeText(file); showToast('คัดลอกลิงก์แล้ว', 'success'); }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = message;
+            document.getElementById('toast-icon').className = type === 'success' ? 'fa-solid fa-circle-check text-mars-500 text-lg' : type === 'error' ? 'fa-solid fa-circle-xmark text-red-500 text-lg' : 'fa-solid fa-circle-info text-sky-500 text-lg';
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none'); }, 3000);
+        }
+    </script>
 </body>
 </html>
