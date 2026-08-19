@@ -235,7 +235,7 @@
             const u = document.getElementById('login-user').value.trim().toLowerCase();
             const p = document.getElementById('login-pass').value.trim();
 
-            if ((u === 'admin' && p === 'admin') || (u === 'viewer' && p === 'viewer')) {
+            if ((u === 'admin' && p === 'adminmars') || (u === 'viewer' && p === 'viewer')) {
                 currentUser = u;
                 document.getElementById('user-initial').innerText = u.charAt(0);
                 document.getElementById('login-screen').classList.add('hidden');
@@ -348,6 +348,29 @@
             return '';
         }
 
+        // ฟังก์ชันช่วยเช็กว่าเป็นวิดีโอหรือไม่ จาก Base64 หรือ URL
+        function isVideoFile(url) {
+            if (!url) return false;
+            return url.startsWith('data:video/') || url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg') || url.includes('video');
+        }
+
+        // ฟังก์ชันช่วยเรนเดอร์พรีวิวไฟล์ (แยกรูปภาพกับวิดีโออัตโนมัติ)
+        function renderThumbnail(fileUrl) {
+            if (isVideoFile(fileUrl)) {
+                return `
+                    <div class="w-full h-full bg-slate-950 relative flex items-center justify-center">
+                        <video src="${fileUrl}" class="w-full h-full object-cover pointer-events-none" preload="metadata"></video>
+                        <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <div class="w-8 h-8 rounded-full bg-mars-600/80 text-white flex items-center justify-center text-xs shadow-md">
+                                <i class="fa-solid fa-play ml-0.5"></i>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                return `<img src="${fileUrl}" class="w-full h-full object-cover">`;
+            }
+        }
+
         function renderPaperView(item) {
             let formattedContent = item.content ? item.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-mars-400 underline hover:text-mars-300">$1</a>') : '';
             const files = item.files || [];
@@ -365,8 +388,8 @@
                     ${files.length > 0 ? `
                         <div class="grid grid-cols-4 gap-2 mt-2">
                             ${files.map((f, idx) => `
-                                <div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, ${idx})'>
-                                    <img src="${f}" class="w-full h-full object-cover">
+                                <div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-pointer relative" onclick='openLightbox(${JSON.stringify(files)}, ${idx})'>
+                                    ${renderThumbnail(f)}
                                 </div>
                             `).join('')}
                         </div>
@@ -390,12 +413,16 @@
                         </div>
                         ${files.length > 0 ? `
                             <div class="grid grid-cols-3 gap-2 mt-3 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, 0)'>
-                                ${previewFiles.map(f => `<div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800"><img src="${f}" class="w-full h-full object-cover"></div>`).join('')}
+                                ${previewFiles.map(f => `
+                                    <div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800 relative">
+                                        ${renderThumbnail(f)}
+                                    </div>
+                                `).join('')}
                             </div>
                         ` : `<div class="text-xs text-slate-500 py-6 text-center">ไม่มีไฟล์แนบ</div>`}
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-                        <span>คลิกเพื่อดูภาพเต็ม</span>
+                        <span>คลิกเพื่อดูเต็มจอ</span>
                         ${files.length > 0 ? `<button onclick='openLightbox(${JSON.stringify(files)}, 0)' class="text-mars-400 hover:text-mars-300 font-medium">เปิดดูสไลด์</button>` : ''}
                     </div>
                 </div>`;
@@ -493,7 +520,6 @@
             document.getElementById('data-modal').classList.remove('hidden'); document.getElementById('data-modal').classList.add('flex');
         }
 
-        // แปลงไฟล์ที่อัปโหลดเป็น Base64 เพื่อเก็บบันทึกลง Supabase ได้ทันทีโดยไม่ต้องตั้งค่า Storage Bucket เพิ่มเติม
         function readFilesAsDataURLs(fileInput) {
             return new Promise((resolve) => {
                 const files = fileInput.files;
@@ -581,8 +607,15 @@
 
         function closeLightbox() { document.getElementById('lightbox-modal').classList.add('hidden'); document.getElementById('lightbox-modal').classList.remove('flex'); }
 
+        // ปรับ Lightbox ให้รองรับการเล่นวิดีโอแบบเต็มจอและมีปุ่มควบคุม (Controls) ด้วย
         function renderLightboxContent() {
-            document.getElementById('lightbox-content').innerHTML = `<img src="${activeMediaList[activeMediaIndex]}" class="max-h-[75vh] max-w-full rounded-xl object-contain shadow-2xl">`;
+            const currentFile = activeMediaList[activeMediaIndex];
+            const container = document.getElementById('lightbox-content');
+            if (isVideoFile(currentFile)) {
+                container.innerHTML = `<video src="${currentFile}" controls autoplay class="max-h-[75vh] max-w-full rounded-xl object-contain shadow-2xl"></video>`;
+            } else {
+                container.innerHTML = `<img src="${currentFile}" class="max-h-[75vh] max-w-full rounded-xl object-contain shadow-2xl">`;
+            }
         }
 
         function nextMedia() { activeMediaIndex = (activeMediaIndex + 1) % activeMediaList.length; renderLightboxContent(); }
