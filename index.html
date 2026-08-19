@@ -213,16 +213,22 @@
         const SUPABASE_KEY = 'sb_publishable_fhisWr9_VvHAwb2INiMCQQ_ya5nXH9q';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentUser = null;
+        let currentUser = localStorage.getItem('mars_current_user') || null;
         let currentView = 'home';
         let searchQuery = '';
         
-        // โหลดข้อมูลจาก LocalStorage ทันทีตั้งแต่เริ่ม เพื่อให้หน้าจอไม่ว่างเปล่าเวลารีเฟรช (F5)
         let db = JSON.parse(localStorage.getItem('mars_db') || '[]');
         let trashBin = JSON.parse(localStorage.getItem('mars_trash') || '[]');
 
         let activeMediaList = [];
         let activeMediaIndex = 0;
+
+        // ตรวจสอบสถานะและเปิดระบบทันทีถ้าเคยล็อกอินไว้แล้ว
+        window.addEventListener('DOMContentLoaded', () => {
+            if (currentUser) {
+                initAppSession(currentUser);
+            }
+        });
 
         async function fetchSupabaseData() {
             const { data, error } = await client.from('mars_items').select('*').order('created_at', { ascending: false });
@@ -230,7 +236,6 @@
                 db = data.filter(i => !i.deleted_at);
                 trashBin = data.filter(i => i.deleted_at);
                 
-                // บันทึกเก็บไว้ใน LocalStorage เพื่อความรวดเร็วในการเปิดครั้งถัดไป
                 localStorage.setItem('mars_db', JSON.stringify(db));
                 localStorage.setItem('mars_trash', JSON.stringify(trashBin));
 
@@ -244,36 +249,40 @@
             const p = document.getElementById('login-pass').value.trim();
 
             if ((u === 'admin' && p === 'admin') || (u === 'viewer' && p === 'viewer')) {
-                currentUser = u;
-                document.getElementById('user-initial').innerText = u.charAt(0);
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('app-wrapper').classList.remove('hidden');
-                
-                const badge = document.getElementById('role-badge');
-                const createBtn = document.getElementById('btn-create');
-                if (u === 'admin') {
-                    badge.innerText = 'Admin Mode';
-                    badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-mars-500/20 text-mars-400 border border-mars-500/30';
-                    createBtn.classList.remove('hidden'); createBtn.classList.add('flex');
-                } else {
-                    badge.innerText = 'Viewer Mode';
-                    badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30';
-                    createBtn.classList.add('hidden'); createBtn.classList.remove('flex');
-                }
-                
-                // แสดงผลจากแคชทันที แล้วดึงข้อมูลจริงจากคลาวด์เงียบๆ ด้านหลัง
-                renderView();
+                localStorage.setItem('mars_current_user', u);
+                initAppSession(u);
                 fetchSupabaseData();
-                
-                router('home');
                 showToast('เชื่อมต่อ Supabase สำเร็จ', 'success');
             } else {
                 showToast('Username หรือ Password ไม่ถูกต้อง', 'error');
             }
         });
 
+        function initAppSession(u) {
+            currentUser = u;
+            document.getElementById('user-initial').innerText = u.charAt(0);
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-wrapper').classList.remove('hidden');
+            
+            const badge = document.getElementById('role-badge');
+            const createBtn = document.getElementById('btn-create');
+            if (u === 'admin') {
+                badge.innerText = 'Admin Mode';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-mars-500/20 text-mars-400 border border-mars-500/30';
+                createBtn.classList.remove('hidden'); createBtn.classList.add('flex');
+            } else {
+                badge.innerText = 'Viewer Mode';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30';
+                createBtn.classList.add('hidden'); createBtn.classList.remove('flex');
+            }
+            
+            renderView();
+            router('home');
+        }
+
         function logout() {
             currentUser = null;
+            localStorage.removeItem('mars_current_user');
             document.getElementById('app-wrapper').classList.add('hidden');
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('login-form').reset();
