@@ -157,7 +157,11 @@
                 <div id="field-note-container" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">เนื้อหาโน้ต</label>
-                        <textarea id="form-note-content" rows="5" placeholder="พิมพ์เนื้อหาที่นี่..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:outline-none focus:border-mars-500 transition-all"></textarea>
+                        <textarea id="form-note-content" rows="4" placeholder="พิมพ์เนื้อหาที่นี่..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:outline-none focus:border-mars-500 transition-all"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">แนบไฟล์ภาพ/วิดีโอเพิ่มเติมในโน้ต (เลือกได้หลายไฟล์)</label>
+                        <input type="file" id="form-note-files" multiple accept="image/*,video/*" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-400">
                     </div>
                 </div>
 
@@ -302,12 +306,12 @@
                             <div onclick="router('notes')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
                                 <div class="w-12 h-12 rounded-xl bg-mars-500/10 border border-mars-500/20 text-mars-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-book-open"></i></div>
                                 <h3 class="font-bold text-base mb-1">สมุดโน้ต (Notes)</h3>
-                                <p class="text-xs text-slate-400">บันทึกข้อความ เอกสาร และลิงก์ภายใน</p>
+                                <p class="text-xs text-slate-400">บันทึกข้อความ เอกสาร พร้อมแนบไฟล์</p>
                             </div>
                             <div onclick="router('media')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
                                 <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-photo-film"></i></div>
                                 <h3 class="font-bold text-base mb-1">มีเดีย & ไฟล์ (Media)</h3>
-                                <p class="text-xs text-slate-400">คลังภาพและวิดีโอพร้อมพรีวิวและดาวน์โหลด</p>
+                                <p class="text-xs text-slate-400">คลังภาพและวิดีโออัปโหลดจริง</p>
                             </div>
                             <div onclick="router('links')" class="bg-slate-900 border border-slate-800 hover:border-mars-500/50 p-6 rounded-2xl cursor-pointer transition-all group shadow-xl">
                                 <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform"><i class="fa-solid fa-link"></i></div>
@@ -346,6 +350,7 @@
 
         function renderPaperView(item) {
             let formattedContent = item.content ? item.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-mars-400 underline hover:text-mars-300">$1</a>') : '';
+            const files = item.files || [];
             return `
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative group shadow-lg">
                     ${currentUser === 'admin' ? renderOptionsMenu(item.id) : ''}
@@ -356,7 +361,16 @@
                             <span class="text-[10px] text-slate-500">${new Date(item.created_at).toLocaleDateString('th-TH')}</span>
                         </div>
                     </div>
-                    <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">${formattedContent}</div>
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed mb-3">${formattedContent}</div>
+                    ${files.length > 0 ? `
+                        <div class="grid grid-cols-4 gap-2 mt-2">
+                            ${files.map((f, idx) => `
+                                <div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, ${idx})'>
+                                    <img src="${f}" class="w-full h-full object-cover">
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>`;
         }
 
@@ -374,13 +388,15 @@
                                 <span class="text-[10px] text-slate-500">${files.length} ไฟล์แนบ</span>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 mt-3 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, 0)'>
-                            ${previewFiles.map(f => `<div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800"><img src="${f}" class="w-full h-full object-cover"></div>`).join('')}
-                        </div>
+                        ${files.length > 0 ? `
+                            <div class="grid grid-cols-3 gap-2 mt-3 cursor-pointer" onclick='openLightbox(${JSON.stringify(files)}, 0)'>
+                                ${previewFiles.map(f => `<div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800"><img src="${f}" class="w-full h-full object-cover"></div>`).join('')}
+                            </div>
+                        ` : `<div class="text-xs text-slate-500 py-6 text-center">ไม่มีไฟล์แนบ</div>`}
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
                         <span>คลิกเพื่อดูภาพเต็ม</span>
-                        <button onclick='openLightbox(${JSON.stringify(files)}, 0)' class="text-mars-400 hover:text-mars-300 font-medium">เปิดดูสไลด์</button>
+                        ${files.length > 0 ? `<button onclick='openLightbox(${JSON.stringify(files)}, 0)' class="text-mars-400 hover:text-mars-300 font-medium">เปิดดูสไลด์</button>` : ''}
                     </div>
                 </div>`;
         }
@@ -437,6 +453,7 @@
             document.getElementById('form-id').value = '';
             document.getElementById('form-title').value = '';
             document.getElementById('form-note-content').value = '';
+            document.getElementById('form-note-files').value = '';
             document.getElementById('form-media-files').value = '';
             document.getElementById('form-link-url').value = '';
             document.getElementById('form-folder').value = folder;
@@ -476,6 +493,32 @@
             document.getElementById('data-modal').classList.remove('hidden'); document.getElementById('data-modal').classList.add('flex');
         }
 
+        // แปลงไฟล์ที่อัปโหลดเป็น Base64 เพื่อเก็บบันทึกลง Supabase ได้ทันทีโดยไม่ต้องตั้งค่า Storage Bucket เพิ่มเติม
+        function readFilesAsDataURLs(fileInput) {
+            return new Promise((resolve) => {
+                const files = fileInput.files;
+                if (!files || files.length === 0) {
+                    resolve([]);
+                    return;
+                }
+                let results = [];
+                let completed = 0;
+                Array.from(files).forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        results[index] = e.target.result;
+                        completed++;
+                        if (completed === files.length) resolve(results);
+                    };
+                    reader.onerror = () => {
+                        completed++;
+                        if (completed === files.length) resolve(results);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
         async function handleFormSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('form-id').value;
@@ -499,10 +542,13 @@
                     folder,
                     created_at: new Date().toISOString()
                 };
-                if (type === 'note') newItem.content = document.getElementById('form-note-content').value;
+                if (type === 'note') {
+                    newItem.content = document.getElementById('form-note-content').value;
+                    newItem.files = await readFilesAsDataURLs(document.getElementById('form-note-files'));
+                }
                 if (type === 'link') newItem.url = document.getElementById('form-link-url').value;
                 if (type === 'media') {
-                    newItem.files = ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'];
+                    newItem.files = await readFilesAsDataURLs(document.getElementById('form-media-files'));
                 }
 
                 const { error } = await client.from('mars_items').insert([newItem]);
