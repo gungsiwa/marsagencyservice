@@ -374,6 +374,8 @@
         function renderPaperView(item) {
             let formattedContent = item.content ? item.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-mars-400 underline hover:text-mars-300">$1</a>') : '';
             const files = item.files || [];
+            const isLongContent = item.content && item.content.length > 250; // เช็กว่าข้อความยาวเกินไปไหม (มากกว่า 250 ตัวอักษร)
+
             return `
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative group shadow-lg">
                     ${currentUser === 'admin' ? renderOptionsMenu(item.id) : ''}
@@ -384,9 +386,27 @@
                             <span class="text-[10px] text-slate-500">${new Date(item.created_at).toLocaleDateString('th-TH')}</span>
                         </div>
                     </div>
-                    <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed mb-3">${formattedContent}</div>
+                    
+                    <!-- ส่วนแสดงเนื้อหา (จำกัดความสูงและซ่อนข้อความยาวด้วย line-clamp หรือ max-h ถ้าย่ออยู่) -->
+                    <div class="relative">
+                        <div id="note-content-${item.id}" class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed overflow-hidden transition-all duration-300 ${isLongContent ? 'max-h-36' : ''}">
+                            ${formattedContent}
+                        </div>
+                        ${isLongContent ? `
+                            <div id="note-fade-${item.id}" class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-950 to-transparent rounded-b-xl pointer-events-none"></div>
+                        ` : ''}
+                    </div>
+
+                    ${isLongContent ? `
+                        <div class="mt-2 text-right">
+                            <button onclick="toggleExpandNote('${item.id}')" id="btn-expand-${item.id}" class="text-xs text-mars-400 hover:text-mars-300 font-medium inline-flex items-center gap-1">
+                                <i class="fa-solid fa-chevron-down"></i> อ่านทั้งหมด / ดูโค้ดเพิ่มเติม
+                            </button>
+                        </div>
+                    ` : ''}
+
                     ${files.length > 0 ? `
-                        <div class="grid grid-cols-4 gap-2 mt-2">
+                        <div class="grid grid-cols-4 gap-2 mt-3">
                             ${files.map((f, idx) => `
                                 <div class="aspect-square bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-pointer relative" onclick='openLightbox(${JSON.stringify(files)}, ${idx})'>
                                     ${renderThumbnail(f)}
@@ -395,6 +415,25 @@
                         </div>
                     ` : ''}
                 </div>`;
+        }
+
+        // ฟังก์ชันสำหรับกดขยาย/ย่อ โน้ตที่มีขนาดยาว
+        function toggleExpandNote(id) {
+            const contentEl = document.getElementById(`note-content-${id}`);
+            const fadeEl = document.getElementById(`note-fade-${id}`);
+            const btnEl = document.getElementById(`btn-expand-${id}`);
+
+            if (contentEl.classList.contains('max-h-36')) {
+                // ขยายออกทั้งหมด
+                contentEl.classList.remove('max-h-36');
+                if (fadeEl) fadeEl.classList.add('hidden');
+                btnEl.innerHTML = `<i class="fa-solid fa-chevron-up"></i> ย่อเก็บ`;
+            } else {
+                // หุบกลับมาแสดงแค่บางส่วน
+                contentEl.classList.add('max-h-36');
+                if (fadeEl) fadeEl.classList.remove('hidden');
+                btnEl.innerHTML = `<i class="fa-solid fa-chevron-down"></i> อ่านทั้งหมด / ดูโค้ดเพิ่มเติม`;
+            }
         }
 
         function renderMediaCard(item) {
